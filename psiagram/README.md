@@ -1,50 +1,36 @@
-# Welcome to your Expo app 👋
+# Uruchamianie psiagrama - development [na telefonie]
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+## Jak uruchomić u siebie:
 
-## Get started
+1. Wejdźcie w miesjce w którym checie mieć projekt [później będziecie otwierać ten folder w edytorze]
 
-1. Install dependencies
+   ja jestem np. w
+   ```bash
+   C:\>
+   ```
+2. Pobierzcie sobie na telefon aplikacje **Expo Go** z sklepu play albo apple store
+
+3. Sklonowanie repo:
+
+   ```bash
+   git clone https://github.com/Ralfmat/psiagram-frontend.git
+   ```
+
+4. Instalacja zależności [pobiorą się wszystkie paczki, biblioteki itd.]
 
    ```bash
    npm install
    ```
 
-2. Start the app
+5. Uruchomienie aplikacji
 
    ```bash
    npx expo start
    ```
+6. W terminalu powinien wyświetlić się QR code [output jak poniżej]:
 
-In the output, you'll find options to open the app in a
+<img width="947" height="837" alt="image" src="https://github.com/user-attachments/assets/b8364e5e-27a5-4720-98ad-b169914eb0a0" />
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+7. Z aplikacji **Expo Go** skanujecie kod QR i aplikacja wyświetla się na telefonie.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+8. Od teraz można programować apkę. Każda zapisana zmiana wyśietla się na telefonie.
