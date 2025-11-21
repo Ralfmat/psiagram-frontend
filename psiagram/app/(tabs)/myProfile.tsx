@@ -6,10 +6,10 @@ export default function MyProfileScreen() {
 
   return (
     <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <Text style={{ marginBottom: 20 }}>Mój Profil</Text>
+      <Text style={{ marginBottom: 20 }}>My Profile</Text>
 
       <Button
-        title="Wyloguj się"
+        title="Log Out"
         color="red"
         onPress={() => {
           signOut();
