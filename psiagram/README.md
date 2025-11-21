@@ -19,7 +19,7 @@
 
    ```
 
-2. Wejdźcie w miesjce w którym checie mieć projekt, ale nie twórzcie folderu.
+2. Wejdźcie w miesjce w którym checie mieć projekt [później będziecie otwierać ten folder w edytorze]
 
    ja jestem np. w
    ```bash
@@ -27,11 +27,10 @@
    ```
 3. Pobierzcie sobie na telefon aplikacje **Expo Go** z sklepu play albo apple store
 
-4. Sklonujcie repo i przejdźcie do folderu z aplikacją:
+4. Sklonowanie repo:
 
    ```bash
    git clone https://github.com/Ralfmat/psiagram-frontend.git
-   cd .\psiagram-frontend\psiagram\
    ```
 
 5. Instalacja zależności [pobiorą się wszystkie paczki, biblioteki itd.]
