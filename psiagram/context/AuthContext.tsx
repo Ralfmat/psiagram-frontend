@@ -6,7 +6,16 @@ import React, {
     useEffect,
     useState,
 } from "react";
+import axios from "axios";
+import { Alert } from "react-native";
 
+const API_URL =" "; //adres serwera django???????
+
+//zgodne z odpowiedzia django
+type AuthResponse = {
+  access: string;
+  refresh: string;
+};
 
 // Typ użytkownika — na razie podstawowy.
 // Później mti nam powie jakie pola ma user i wtedy to zmienimy.
@@ -22,6 +31,7 @@ type AuthContextType = {
   user: User | null;        // dane użytkownika (albo null)
   login: (email: string, password: string) => Promise<void>; // logowanie
   logout: () => Promise<void>;                               // wylogowanie
+  isLoading: boolean;
 };
 
 // Tworzymy kontekst mozna sie odwlowywac z kazdego poziomu 
@@ -30,25 +40,35 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Provider owija całą aplikację w _layout.tsx
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Tu trzymamy info o aktualnie zalogowanym użytkowniku.
-  const [user, setUser] = useState<User | null>(null);
-
+  const [user, setUser] = useState<User| null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
   // login (na razie działa „udawane”)
   // Później tutaj podmienimy na prawdziwe zapytanie do API.
   const login = async (email: string, password: string) => {
-    // Udajemy, że backend zwrócił takie dane.
-    const fakeUser: User = {
-      id: 1,
-      email,
-      token: "fake-token-123", 
-    };
-
-    setUser(fakeUser);
-
-    // Token zapisujemy, żeby po restarcie aplikacji dalej być zalogowanym.
-    // Później zostanie tak samo, tylko token będzie prawdziwy.
-    await AsyncStorage.setItem("token", fakeUser.token);
+    try{
+      const response=await axios.post(`${API_URL}/api/token/`, {
+        email: email,
+        password: password,
+      });
+      const data = response.data as AuthResponse;
+      
+      //tymczasowo id 1
+      const loggedInUser: User = {
+        id: 1, 
+        email: email,
+        token: data.access,
+      };
+      // Token zapisujemy, żeby po restarcie aplikacji dalej być zalogowanym.
+      // Później zostanie tak samo, tylko token będzie prawdziwy.
+      await AsyncStorage.setItem("token", data.access);
+      await AsyncStorage.setItem("email", email);
+    } catch(error){
+      Alert.alert("Blad", "Niepoprawny email lub haslo");
+      throw error;
+    }
   };
+    
 
   // logout
   // Później to zostanie prawie takie samo ↴
@@ -63,29 +83,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // ŁADOWANIE USERA PRZY STARCIE APLIKACJI
   // Po backendzie podmienimy tylko środek funkcji.
   useEffect(() => {
-    const loadUser = async () => {
-      const token = await AsyncStorage.getItem("token");
+    const loadToken = async () => {
+      try{
+       const token = await AsyncStorage.getItem("token");
+       const email = await AsyncStorage.getItem("email"); 
 
-      if (!token) return;
-
-      // Udajemy, że backend zweryfikował token i zwrócił dane usera.
-      setUser({
-        id: 1,
-        email: "test@example.com",
-        token: token,
-      });
+      if (token&&email){
+        setUser({
+          id:1,
+          email: email,
+          token: token         
+        });
+      }
+    } catch (e) {
+      console.log(e);
+      } finally {
+        setIsLoading(false);
+      }
     };
-
-    loadUser();
+    loadToken();
   }, []);
 
   return (
     <AuthContext.Provider
       value={{
-        isAuthenticated,
+        isAuthenticated:!!user,
         user,
         login,
         logout,
+        isLoading
       }}
     >
       {children}

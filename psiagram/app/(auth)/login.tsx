@@ -1,25 +1,49 @@
 import { router } from "expo-router";
-import { Button, Text, View } from "react-native";
+import { Button, Text, View, Alert, TextInput } from "react-native";
 import { useAuth } from "../../context/AuthContext";
+import { useState } from "react";
 
 export default function LoginScreen() {
   const { login } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
-    //  logowanie „na sztywno” testowym userem
-    // później zamiast tego weźmiesz email/hasło z inputów
-    await login("test@example.com", "123456");
+    //  logowanie 
+    if (!email || !password) {
+        Alert.alert("blad", "wypelnij pola");
+        return;
+    }
+    setIsLoading(true);
 
-    // przejście na feed
-    // (jak będzie pełne przekierowanie po isAuthenticated,
-    // to ten replace można  usunąć i zostawić same redirecty)
-    router.replace("/(tabs)/feed");
+    try{
+      await login(email,password);
+    }
+    catch(e){
+      console.error(e)
+    }
+    finally{
+      setIsLoading(false)
+    }
   };
 
   return (
     <View>
       <Text>Login</Text>
-
+      <TextInput
+        placeholder="Email"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+      />
+      <TextInput
+        placeholder="Hasło"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+      />
       <Button title="Log in" onPress={handleLogin} />
 
       <Button
