@@ -1,6 +1,6 @@
 import { Slot, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
-import { View, ActivityIndicator } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import { SessionProvider, useSession } from "../context/ctx";
 
 function InitialLayout() {
@@ -27,7 +27,7 @@ function InitialLayout() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", items: "center" }}>
+      <View style={{ flex: 1, justifyContent: "center"}}>
         <ActivityIndicator size="large" />
       </View>
     );
