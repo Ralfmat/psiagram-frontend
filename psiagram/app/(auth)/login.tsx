@@ -2,7 +2,7 @@ import { useSession } from "@/context/ctx";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
-import { Dimensions, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Dimensions, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 
 export default function LoginScreen() {
@@ -16,74 +16,95 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.root}>
 
-      <Image
-        source={require("@/assets/images/logo_psiagram.png")}
-        style={styles.logo}
-        resizeMode="contain"
-      />
-
-      <Text style={styles.subtitle}>
-        welcome to Psiagram!{"\n"}
-        connect, share, and celebrate{"\n"}
-        life with your furry friends.
-      </Text>
-
-      <View style={styles.fieldContainer}>
-        <Text style={styles.fieldLabel}>username</Text>
-        <View style={styles.inputWrapper}>
-        <Ionicons name ="person-outline" size={18} color="#555" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            value={username}
-            onChangeText={setUsername}
-            placeholder="username"
-            placeholderTextColor="#555"
+          <Image
+            source={require("@/assets/images/logo_psiagram.png")}
+            style={styles.logo}
+            resizeMode="contain"
           />
-        </View>
-      </View>
 
-      {/* input: password */}
-      <View style={styles.fieldContainer}>
-        <Text style={styles.fieldLabel}>password</Text>
-        <View style={styles.inputWrapper}>
-          <Ionicons name="eye-outline" size={18} color="#555" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            placeholder="password"
-            placeholderTextColor="#555"
-            secureTextEntry
-          />
-        </View>
-              <TouchableOpacity style={styles.forgotWrapper}
-                onPress={() => router.push("/(auth)/forgotPassword")}>
-                <Text style={styles.linkText}>forgot your password?</Text>
+          <Text style={styles.subtitle}>
+            welcome to Psiagram!{"\n"}
+            connect, share, and celebrate{"\n"}
+            life with your furry friends.
+          </Text>
+
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>username</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="person-outline" size={18} color="#555" />
+              <TextInput
+                style={styles.input}
+                value={username}
+                onChangeText={setUsername}
+                placeholder="username"
+                placeholderTextColor="#555"
+              />
+            </View>
+          </View>
+
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>password</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="eye-outline" size={18} color="#555" />
+              <TextInput
+                style={styles.input}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="password"
+                placeholderTextColor="#555"
+                secureTextEntry
+              />
+            </View>
+
+            <TouchableOpacity
+              style={styles.forgotWrapper}
+              onPress={() => router.push("/(auth)/forgotPassword")}
+            >
+              <Text style={styles.linkText}>forgot your password?</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={handleLogin}
+            >
+              <Text style={styles.primaryButtonText}>log in</Text>
+            </TouchableOpacity>
+
+            <View style={styles.bottomTextWrapper}>
+              <Text style={styles.bottomText}>
+                don't have an account yet?
+              </Text>
+              <TouchableOpacity
+                onPress={() => router.push("/(auth)/register")}
+              >
+                <Text style={styles.bottomLink}>sign up now!</Text>
               </TouchableOpacity>
+            </View>
+          </View>
 
-              <TouchableOpacity style={styles.primaryButton} onPress={handleLogin}>
-                  <Text style={styles.primaryButtonText}>log in</Text>
-                </TouchableOpacity>
-
-                <View style={styles.bottomTextWrapper}>
-                  <Text style={styles.bottomText}>don't have an account yet?</Text>
-                  <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
-                    <Text style={styles.bottomLink}>sign up now!</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-      </View>
-
-
- 
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const { width, height } = Dimensions.get("window");
 
 const styles = StyleSheet.create({
+  scrollContainer: {
+    flexGrow: 1,
+  },
   root: {
     flex: 1,
     backgroundColor: "#FAF7F0", 

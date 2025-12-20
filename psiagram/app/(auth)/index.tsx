@@ -8,7 +8,7 @@ export default function StartScreen() {
   useEffect(() => {
     const timer = setTimeout(() => {
       router.replace("/(auth)/login");
-    }, 3000); // 4.5s
+    }, 3000); 
 
     return () => clearTimeout(timer);
   }, []);
