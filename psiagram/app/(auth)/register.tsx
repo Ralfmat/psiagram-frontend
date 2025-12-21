@@ -93,6 +93,7 @@ export default function LoginScreen() {
 
             <TouchableOpacity
               style={styles.primaryButton}
+              // tutaj sprawdzić czy dane ok i dodać nowego uzytkownika
               onPress={()=>router.push("/(auth)/login")}
             >
               <Text style={styles.primaryButtonText}>sign up</Text>

@@ -12,7 +12,8 @@ export default function ForgotPasswordScreen() {
 
 
   const handleSubmitEmail = () => {
-    // tu wysylanie maila
+    // tu wysylanie maila (??)
+    // spawdzenie czy cod poprawny(??)
 
     setPopoutVisible(true);
   };
@@ -107,7 +108,7 @@ export default function ForgotPasswordScreen() {
 
                 <Text style={styles.bottomText}>didn't get a code?</Text>
                   <TouchableOpacity>
-                    
+                                        
                   <Text style={styles.bottomLink}>resend</Text>
                 </TouchableOpacity>
 
