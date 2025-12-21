@@ -1,27 +1,85 @@
-import { Tabs, useRouter } from "expo-router";
-import { Pressable, Text } from "react-native";
+import CustomTabBar from "@/components/tabBar";
+import { Ionicons } from "@expo/vector-icons";
+import type { Href } from "expo-router";
+import { Tabs, router, usePathname } from "expo-router";
+import React, { useState } from "react";
+import { Image, Pressable, StyleSheet } from "react-native";
 
 export default function TabsLayout() {
-  const router = useRouter();
+  const pathname = usePathname();
+  const isNotifications = pathname.includes("notifications");
+
+  const [returnTo, setReturnTo] = useState<Href>("/(tabs)/feed");
+
+  const openNotifications = () => {
+    setReturnTo(pathname as Href);
+    router.push("/(tabs)/notifications");
+  };
+
+  const closeNotifications = () => {
+    router.replace(returnTo);
+  };
 
   return (
     <Tabs
+      tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
-        headerRight: () => (
+        headerShown: true,
+
+        headerLeft: () => (
           <Pressable
-            style={{ marginRight: 16 }}
-            onPress={() => router.push("/(tabs)/notifications")}
+            onPress={() => router.push("/(tabs)/feed")}
+            style={styles.headerLeft}
+            hitSlop={10}
           >
-            <Text> dzwonek </Text>
+            <Image
+              source={require("@/assets/images/logo_psiagram.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
           </Pressable>
         ),
+
+        headerRight: () => (
+          <Pressable
+            onPress={() => {
+              if (isNotifications) closeNotifications();
+              else openNotifications();
+            }}
+            style={styles.headerRight}
+            hitSlop={10}
+          >
+            <Ionicons
+              name={isNotifications ? "notifications" : "notifications-outline"}
+              size={26}
+              color="#69324C"
+            />
+          </Pressable>
+        ),
+
+        headerTitle: "",
+        headerShadowVisible: false,
+        headerStyle: { backgroundColor: "#FAF7F0" },
+        headerLeftContainerStyle: { paddingLeft: 20 },
+        headerRightContainerStyle: { paddingRight: 20 },
       }}
     >
-      <Tabs.Screen name="feed" options={{ title: "Feed" }} />
-      <Tabs.Screen name="groups" options={{ title: "Groups" }} />
-      <Tabs.Screen name="createPost" options={{ title: "Create" }} />
-      <Tabs.Screen name="search" options={{ title: "Search" }} />
-      <Tabs.Screen name="myProfile" options={{ title: "Me" }} />
+
+      <Tabs.Screen name="groups"/>
+      <Tabs.Screen name="createPost"/>
+      <Tabs.Screen name="feed"/>
+      <Tabs.Screen name="search"/>
+      <Tabs.Screen name="myProfile"/>
+
+
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  headerLeft: { paddingLeft: 10 },
+
+  logo: { width: 110, height: 110 },
+
+  headerRight: { paddingRight: 10 },
+});

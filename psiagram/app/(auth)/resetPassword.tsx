@@ -11,7 +11,7 @@ export default function LoginScreen() {
 
 
   const handleLogin = () => {
-    //walidacja
+    // sprawdzić czy hasla sie zgadzają i są ok
     signIn();
   };
 
