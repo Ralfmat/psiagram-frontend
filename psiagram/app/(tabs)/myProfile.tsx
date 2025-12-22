@@ -2,6 +2,7 @@ import { useSession } from "@/context/ctx";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   Dimensions,
@@ -11,7 +12,6 @@ import {
   Modal,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -96,8 +96,6 @@ export default function MyProfile() {
       setChangingAvatar(false);
     }
   };
-
-
 
 
   const openEdit = () => {
