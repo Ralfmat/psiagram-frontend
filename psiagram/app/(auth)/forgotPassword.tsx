@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Dimensions, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import OtpInput from "../../components/verifyCode";
 
+const { width, height } = Dimensions.get("window");
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState("");
@@ -78,43 +79,45 @@ export default function ForgotPasswordScreen() {
               </TouchableOpacity>
             </View>
 
-
-
-          <Modal
-            visible={popoutVisible}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setPopoutVisible(false)}
-          >
-            <Pressable
-              style={styles.backdrop}
-              onPress={() => setPopoutVisible(false)}
+            <Modal
+              visible={popoutVisible}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setPopoutVisible(false)}
             >
-              <Pressable style={styles.popoutCard} onPress={() => {}}>
-                <Text style={styles.popoutTitle}>enter your verification code here</Text>
-                 
-                <OtpInput length={6} onChangeCode={setCode} />
-                <Text style={{ textAlign: "center", marginTop: 16 }}>
-                </Text>
-                
-                <TouchableOpacity
-                  style={styles.popoutButton}
-                  onPress={() => {setPopoutVisible(false);
-                     router.push("/(auth)/resetPassword");}
-                  }
+              <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+              >
+                <Pressable
+                  style={styles.overlay}
+                  onPress={() => setPopoutVisible(false)}
                 >
-                  <Text style={styles.primaryButtonText}>confirm</Text>
-                </TouchableOpacity>
+                  <Pressable style={styles.popoutCard} onPress={() => {}}>
+                    <Text style={styles.popoutTitle}>
+                      enter your verification code here
+                    </Text>
 
-                <Text style={styles.bottomText}>didn't get a code?</Text>
-                  <TouchableOpacity>
-                                        
-                  <Text style={styles.bottomLink}>resend</Text>
-                </TouchableOpacity>
+                    <OtpInput length={6} onChangeCode={setCode} />
 
-              </Pressable>
-            </Pressable>
-          </Modal>
+                    <TouchableOpacity
+                      style={styles.popoutButton}
+                      onPress={() => {
+                        setPopoutVisible(false);
+                        router.push("/(auth)/resetPassword");
+                      }}
+                    >
+                      <Text style={styles.primaryButtonText}>confirm</Text>
+                    </TouchableOpacity>
+
+                    <Text style={styles.bottomText}>didn't get a code?</Text>
+                    <TouchableOpacity>
+                      <Text style={styles.bottomLink}>resend</Text>
+                    </TouchableOpacity>
+                  </Pressable>
+                </Pressable>
+              </KeyboardAvoidingView>
+            </Modal>
 
 
         </View>
@@ -123,13 +126,9 @@ export default function ForgotPasswordScreen() {
   );
 }
 
-
-const { width, height } = Dimensions.get("window");
-
 const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
-    paddingBottom: 40
   },
   root: {
     flex: 1,
@@ -166,13 +165,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#000000",
     textAlign: "center"
-
   },
-    fieldContainer: {
+  fieldContainer: {
     width: width * 0.8,
     marginBottom: 16,
   },
-   fieldLabel: {
+  fieldLabel: {
     fontSize: 14,
     color: "#5F7751"
   },
@@ -186,16 +184,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     height: 44,
   },
-  icon: {
-    marginRight: 8,
-    fontSize: 16,
-  },
   input: {
     flex: 1,
     fontSize: 14,
     color: "#000",
   },
-   primaryButton: {
+  primaryButton: {
     alignSelf: "flex-end",
     backgroundColor: "#69324C", 
     borderRadius: 10,
@@ -207,10 +201,10 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: "#fff",
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "bold",
     textTransform: "lowercase",
   },
-    bottomText: {
+  bottomText: {
     fontSize: 13,
     color: "#0B380C",
     textAlign: "right",
@@ -221,12 +215,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     alignSelf: "flex-start",
     color: "#0B380C",
-    fontWeight: "600",
+    fontWeight: "bold",
     textDecorationLine: "underline"
   },
-
-
-  backdrop: {
+  overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",
     justifyContent: "center",
@@ -244,23 +236,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: "center",
   },
-  popoutBody: {
-    fontSize: 13,
-    color: "#333",
-    marginBottom: 16,
-  },
-   popoutButton: {
-    alignSelf: "center",
+  popoutButton: {
+    alignSelf: "flex-end",
     backgroundColor: "#69324C", 
     borderRadius: 10,
     paddingHorizontal: 40,
     paddingVertical: 10,
-    marginTop: 1,
-    bottom: 10,
+    marginTop: 30,
   },
-  popoutPrimaryText: {
-    color: "#fff",
-    fontWeight: "600",
-  },
-
 });
