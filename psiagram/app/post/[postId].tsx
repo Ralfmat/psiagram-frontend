@@ -65,17 +65,16 @@ export default function PostDetails() {
               <Text style={styles.backText}>back</Text>
             </Pressable>
 
-            <View style={styles.headerCenter}>
-              <Text style={styles.headerTitle}>posts</Text>
-              <Text style={styles.headerSubtitle}>{post.username}</Text>
-            </View>
-
             <View style={{ width: 70 }} />
           </View>
 
           <View style={styles.userRow}>
             <Image source={{ uri: post.avatarUri }} style={styles.userAvatar} />
-            <Text style={styles.userName}>{post.username}</Text>
+
+            <Pressable onPress={() => router.push(`/user/${post.username}`)}>
+              <Text style={styles.headerTitle}>{post.username}</Text>
+            </Pressable>
+
           </View>
 
           <View style={styles.photoWrap}>
@@ -151,7 +150,11 @@ export default function PostDetails() {
           <View style={styles.commentsList}>
             {comments.map((c) => (
               <View key={c.id} style={styles.commentLine}>
-                <Text style={styles.commentLineUser}>{c.user} </Text>
+
+                <Pressable onPress={() => router.push({ pathname: "/user/[userId]", params: { userId: c.user } })}>
+                  <Text style={styles.commentLineUser}>{c.user}  </Text>
+                </Pressable>
+
                 <Text style={styles.commentLineText}>{c.text}</Text>
               </View>
             ))}
