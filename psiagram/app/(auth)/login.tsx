@@ -2,17 +2,46 @@ import { useSession } from "@/context/ctx";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
-import { Dimensions, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
-
+import { 
+  Dimensions, 
+  Image, 
+  KeyboardAvoidingView, 
+  Platform, 
+  ScrollView, 
+  StyleSheet, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  View,
+  Alert,
+  ActivityIndicator
+} from "react-native";
 
 export default function LoginScreen() {
   const { signIn } = useSession();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleLogin = () => {
-    // tutaj normalnie walidacja i call do API
-    signIn();
+  const handleLogin = async () => {
+    // 1. Validation
+    if (!email.trim() || !password.trim()) {
+      Alert.alert("Validation Error", "Please enter both email and password.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // 2. Call API via Context
+      await signIn(email, password);
+      // Navigation is usually handled by the layout listening to 'session' state,
+      // but you can force it here if needed:
+      router.replace("/"); 
+    } catch (error) {
+      // Error is already alerted in ctx, but we catch it to stop loading spinner
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -40,15 +69,16 @@ export default function LoginScreen() {
           </Text>
 
           <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>username</Text>
+            <Text style={styles.fieldLabel}>email</Text>
             <View style={styles.inputWrapper}>
               <Ionicons name="person-outline" size={18} color="#555" />
               <TextInput
                 style={styles.input}
-                value={username}
-                onChangeText={setUsername}
-                placeholder="username"
+                value={email}
+                onChangeText={setEmail}
+                placeholder="email"
                 placeholderTextColor="#555"
+                autoCapitalize="none"
               />
             </View>
           </View>
@@ -75,10 +105,15 @@ export default function LoginScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.primaryButton}
+              style={[styles.primaryButton, isSubmitting && { opacity: 0.7 }]}
               onPress={handleLogin}
+              disabled={isSubmitting}
             >
-              <Text style={styles.primaryButtonText}>log in</Text>
+              {isSubmitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.primaryButtonText}>log in</Text>
+              )}
             </TouchableOpacity>
 
             <View style={styles.bottomTextWrapper}>
@@ -102,9 +137,7 @@ export default function LoginScreen() {
 const { width, height } = Dimensions.get("window");
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    flexGrow: 1,
-  },
+  scrollContainer: { flexGrow: 1 },
   root: {
     flex: 1,
     backgroundColor: "#FAF7F0", 
@@ -144,14 +177,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     height: 44,
   },
-  icon: {
-    marginRight: 8,
-    fontSize: 16,
-  },
   input: {
     flex: 1,
     fontSize: 14,
     color: "#000",
+    marginLeft: 8,
   },
   forgotWrapper: {
     alignSelf: "flex-start",
@@ -170,6 +200,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     paddingVertical: 10,
     marginBottom: 30,
+    minWidth: 120,
+    alignItems: "center",
   },
   primaryButtonText: {
     color: "#fff",

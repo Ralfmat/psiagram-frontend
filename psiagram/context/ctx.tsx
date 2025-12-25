@@ -1,14 +1,16 @@
 import React from "react";
 import { useStorageState } from "../hooks/useStorageState";
+import client from "../api/client"; // Import your axios client
+import { Alert } from "react-native";
 
 const AuthContext = React.createContext<{
-  signIn: () => void;
+  signIn: (email: string, password: string) => Promise<void>;
   signOut: () => void;
   session?: string | null;
   isLoading: boolean;
 }>({
-  signIn: () => null,
-  signOut: () => null,
+  signIn: async () => {},
+  signOut: () => {},
   session: null,
   isLoading: false,
 });
@@ -29,10 +31,28 @@ export function SessionProvider(props: React.PropsWithChildren) {
   return (
     <AuthContext.Provider
       value={{
-        signIn: () => {
-          // Save token in memory
-          // TODO fetch logic from backend e.g. /api/login/
-          setSession("xxx");
+        signIn: async (email, password) => {
+          try {
+            // Adjust the endpoint if your Django URL is different (e.g. /api/token/)
+            const response = await client.post("/api/auth/login/", {
+              email,
+              password,
+            });
+
+            // Assuming Django SimpleJWT returns { "access": "...", "refresh": "..." }
+            const token = response.data.access; 
+            
+            if (token) {
+              setSession(token);
+            } else {
+              Alert.alert("Login Error", "No token received from server.");
+            }
+          } catch (error: any) {
+            console.error("Login failed:", error);
+            const msg = error.response?.data?.detail || "Invalid credentials or server error.";
+            Alert.alert("Login Failed", msg);
+            throw error;
+          }
         },
         signOut: () => {
           setSession(null);

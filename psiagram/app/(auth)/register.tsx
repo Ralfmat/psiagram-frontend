@@ -1,17 +1,79 @@
-import { useSession } from "@/context/ctx";
+import client from "@/api/client"; // Use the client instance
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
-import { Dimensions, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { 
+  Dimensions, 
+  Image, 
+  KeyboardAvoidingView, 
+  Platform, 
+  ScrollView, 
+  StyleSheet, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  View,
+  Alert,
+  ActivityIndicator
+} from "react-native";
 
-
-export default function LoginScreen() {
-  const { signIn } = useSession();
+export default function RegisterScreen() {
   const [email, setEmail] = useState("");
   const [birthDate, setBirthDate] = useState("");
-  const [username, setUsername] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const isValidEmail = (email: string) => {
+    return /\S+@\S+\.\S+/.test(email);
+  };
+
+  const handleRegister = async () => {
+    // 1. Validation
+    if (!email || !password) {
+      Alert.alert("Error", "Email and password are required.");
+      return;
+    }
+    if (!isValidEmail(email)) {
+      Alert.alert("Error", "Please enter a valid email address.");
+      return;
+    }
+    if (password.length < 8) {
+      Alert.alert("Error", "Password must be at least 8 characters long.");
+      return;
+    }
+
+    // 2. API Call
+    setIsSubmitting(true);
+    try {
+      // Adjust endpoint to match Django (e.g. /api/register/)
+      // Ensure backend expects snake_case or camelCase matching these keys
+      const payload = {
+        email,
+        first_name: firstName,
+        last_name: lastName,
+        password1: password,
+        password2: password,
+        birth_date: birthDate, // Map to Django field name
+      };
+
+      await client.post("/api/auth/registration/", payload);
+      
+      Alert.alert("Success", "Account created! Please log in.");
+      router.push("/(auth)/login");
+      
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      // Extract error message from Django response if available
+      const msg = error.response?.data 
+        ? JSON.stringify(error.response.data) 
+        : "Something went wrong. Please try again.";
+      Alert.alert("Registration Failed", msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -44,6 +106,8 @@ export default function LoginScreen() {
                 onChangeText={setEmail}
                 placeholder="email"
                 placeholderTextColor="#555"
+                keyboardType="email-address"
+                autoCapitalize="none"
               />
             </View>
           </View>
@@ -56,23 +120,38 @@ export default function LoginScreen() {
                 style={styles.input}
                 value={birthDate}
                 onChangeText={setBirthDate}
-                placeholder="dd-mm-yyyy"
+                placeholder="yyyy-mm-dd"
                 placeholderTextColor="#555"
               />
             </View>
           </View>
           
-
           <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>username</Text>
+            <Text style={styles.fieldLabel}>First name</Text>
             <View style={styles.inputWrapper}>
               <Ionicons name="person-outline" size={18} color="#555" />
               <TextInput
                 style={styles.input}
-                value={username}
-                onChangeText={setUsername}
-                placeholder="username"
+                value={firstName}
+                onChangeText={setFirstName}
+                placeholder="First Name"
                 placeholderTextColor="#555"
+                autoCapitalize="none"
+              />
+            </View>
+          </View>
+
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Last name</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="person-outline" size={18} color="#555" />
+              <TextInput
+                style={styles.input}
+                value={lastName}
+                onChangeText={setLastName}
+                placeholder="Last Name"
+                placeholderTextColor="#555"
+                autoCapitalize="none"
               />
             </View>
           </View>
@@ -92,11 +171,15 @@ export default function LoginScreen() {
             </View>
 
             <TouchableOpacity
-              style={styles.primaryButton}
-              // tutaj sprawdzić czy dane ok i dodać nowego uzytkownika
-              onPress={()=>router.push("/(auth)/login")}
+              style={[styles.primaryButton, isSubmitting && { opacity: 0.7 }]}
+              onPress={handleRegister}
+              disabled={isSubmitting}
             >
-              <Text style={styles.primaryButtonText}>sign up</Text>
+              {isSubmitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.primaryButtonText}>sign up</Text>
+              )}
             </TouchableOpacity>
 
             <View style={styles.bottomTextWrapper}>
@@ -120,9 +203,7 @@ export default function LoginScreen() {
 const { width, height } = Dimensions.get("window");
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    flexGrow: 1,
-  },
+  scrollContainer: { flexGrow: 1 },
   root: {
     flex: 1,
     backgroundColor: "#FAF7F0", 
@@ -167,24 +248,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     height: 44,
   },
-  icon: {
-    marginRight: 8,
-    fontSize: 16,
-  },
   input: {
     flex: 1,
     fontSize: 14,
     color: "#000",
-  },
-  forgotWrapper: {
-    alignSelf: "flex-start",
-    marginTop: 6,
-    marginBottom: 18,
-  },
-  linkText: {
-    fontSize: 13,
-    color: "#969696",
-    textDecorationLine: "underline",
+    marginLeft: 8,
   },
   primaryButton: {
     alignSelf: "flex-end",
@@ -193,7 +261,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     paddingVertical: 10,
     marginTop: 15,
-
+    minWidth: 120,
+    alignItems: "center",
   },
   primaryButtonText: {
     color: "#fff",

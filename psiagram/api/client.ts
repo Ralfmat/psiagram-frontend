@@ -7,7 +7,7 @@ import { Platform } from "react-native";
 // Trzeba użyć swojego adresu IP z sieci lokalnej (np. 192.168.x.x)
 // lub specjalnego adresu dla emulatora Androida: 'http://10.0.2.2:8000/api/v1/'
 // na razie używamy localhost dla testów na web
-const apiUrl = Constants.expoConfig?.extra?.apiUrl || "http://localhost:8000/";
+const apiUrl = "http://127.0.0.1:8000/";
 
 const client = axios.create({
   baseURL: apiUrl,
