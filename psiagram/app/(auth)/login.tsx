@@ -24,7 +24,6 @@ export default function LoginScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleLogin = async () => {
-    // 1. Validation
     if (!email.trim() || !password.trim()) {
       Alert.alert("Validation Error", "Please enter both email and password.");
       return;
@@ -32,13 +31,9 @@ export default function LoginScreen() {
 
     setIsSubmitting(true);
     try {
-      // 2. Call API via Context
       await signIn(email, password);
-      // Navigation is usually handled by the layout listening to 'session' state,
-      // but you can force it here if needed:
       router.replace("/"); 
     } catch (error) {
-      // Error is already alerted in ctx, but we catch it to stop loading spinner
     } finally {
       setIsSubmitting(false);
     }

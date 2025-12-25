@@ -1,6 +1,6 @@
 import React from "react";
 import { useStorageState } from "../hooks/useStorageState";
-import client from "../api/client"; // Import your axios client
+import client from "../api/client";
 import { Alert } from "react-native";
 
 const AuthContext = React.createContext<{
@@ -33,13 +33,11 @@ export function SessionProvider(props: React.PropsWithChildren) {
       value={{
         signIn: async (email, password) => {
           try {
-            // Adjust the endpoint if your Django URL is different (e.g. /api/token/)
             const response = await client.post("/api/auth/login/", {
               email,
               password,
             });
 
-            // Assuming Django SimpleJWT returns { "access": "...", "refresh": "..." }
             const token = response.data.access; 
             
             if (token) {

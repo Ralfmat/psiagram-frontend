@@ -30,7 +30,6 @@ export default function RegisterScreen() {
   };
 
   const handleRegister = async () => {
-    // 1. Validation
     if (!email || !password) {
       Alert.alert("Error", "Email and password are required.");
       return;
@@ -44,18 +43,15 @@ export default function RegisterScreen() {
       return;
     }
 
-    // 2. API Call
     setIsSubmitting(true);
     try {
-      // Adjust endpoint to match Django (e.g. /api/register/)
-      // Ensure backend expects snake_case or camelCase matching these keys
       const payload = {
         email,
         first_name: firstName,
         last_name: lastName,
         password1: password,
         password2: password,
-        birth_date: birthDate, // Map to Django field name
+        birth_date: birthDate,
       };
 
       await client.post("/api/auth/registration/", payload);
