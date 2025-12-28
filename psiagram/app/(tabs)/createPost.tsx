@@ -17,31 +17,126 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import client from "../../api/client"; // Import your axios client
 
 const { width } = Dimensions.get("window");
 const SIDE = Math.min(width - 36, 360);
 
-//  TODO: info czy pies jest czy nie ma 
-async function checkDogInPhoto(_uri: string): Promise<{ approved: boolean }> {
-  await new Promise((r) => setTimeout(r, 700));
-  return { approved: Math.random() > 0.4 };
+/**
+ * Checks if a dog is present in the photo using the backend's AWS Rekognition flow.
+ * 1. Get presigned URL.
+ * 2. Upload to S3.
+ * 3. Verify content.
+ */
+async function checkDogInPhoto(uri: string): Promise<{ approved: boolean, file_key?: string }> {
+  try {
+    // 1. Prepare file metadata
+    const filename = uri.split("/").pop() || "photo.jpg";
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+    // 2. Initiate Upload (Get Presigned URL)
+    const initRes = await client.post("/api/v1/rekognition/initiate-upload/", {
+      filename,
+      content_type: type,
+    });
+    const { upload_url, file_key } = initRes.data;
+
+    // 3. Upload to S3 directly
+    // We use standard 'fetch' here instead of 'client' to avoid attaching the 
+    // Django Auth token to the AWS request (which would cause a 400/403 error).
+    const imageBlob = await fetch(uri).then((r) => r.blob());
+    
+    await fetch(upload_url, {
+      method: "PUT",
+      body: imageBlob,
+      headers: {
+        "Content-Type": type,
+      },
+    });
+
+    // 4. Complete & Analyze
+    const compRes = await client.post("/api/v1/rekognition/upload-complete/", {
+      file_key,
+    });
+
+    // The backend returns { status: "approved" | "rejected", ... }
+    return {
+      approved: compRes.data.status === "approved",
+      file_key: file_key
+     };
+
+  } catch (error: any) {
+    console.error("Check Dog Error:", error.response?.data || error.message);
+    // If rejected by logic (400), return false. For other errors, you might want to show an alert.
+    return { approved: false };
+  }
 }
 
-// tu tez podmienić trzeba 
-async function publishPost(_payload: {
-  imageUri: string;
+/**
+ * Publishes the post to the main feed.
+ * Sends data as multipart/form-data.
+ */
+async function publishPost(payload: {
+  s3_key?: string;
+  imageUri?: string; // Fallback, if we change the approach
   caption: string;
   shareOnProfile: boolean;
   groupIds: string[];
 }) {
-  await new Promise((r) => setTimeout(r, 700));
-  return { ok: true };
+
+  // If we have an S3 Key, send a lightweight JSON request
+  if (payload.s3_key) {
+    const response = await client.post("api/posts/create/", {
+      caption: payload.caption,
+      s3_key: payload.s3_key,
+      // groupIds: payload.groupIds (add when backend supports it)
+    });
+    return { ok: response.status === 201 };
+  }
+
+  // Fallback: If no s3_key, use the old FormData method (omitted for brevity)
+  return { ok: false };
+  // const formData = new FormData();
+
+  // // Append simple data
+  // formData.append("caption", payload.caption);
+  
+  // // Note: Your current backend 'Post' model does not seem to have a 'groups' field 
+  // // or logic to handle 'groupIds' yet. We send it in case you add it later, 
+  // // but it might be ignored by the server for now.
+  // // formData.append("groupIds", JSON.stringify(payload.groupIds));
+
+  // // Append Image
+  // // React Native expects an object { uri, name, type } for file uploads
+  // const filename = payload.imageUri.split("/").pop() || "post.jpg";
+  // const match = /\.(\w+)$/.exec(filename);
+  // const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+  // formData.append("image", {
+  //   uri: payload.imageUri,
+  //   name: filename,
+  //   type,
+  // } as any);
+
+  // // Send request
+  // // We don't need to manually set Content-Type to multipart/form-data; 
+  // // axios/fetch usually handles boundary creation automatically when it sees FormData.
+  // // However, sometimes it helps to explicitely let the client know.
+  // const response = await client.post("api/posts/create/", formData, {
+  //   headers: {
+  //     "Content-Type": undefined, 
+  //   } as any,
+  // });
+
+  // return { ok: response.status === 201 };
 }
 
 type Group = { id: string; name: string };
 
 export default function CreatePost() {
   const [selectedUri, setSelectedUri] = useState<string | null>(null);
+  const [uploadedKey, setUploadedKey] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
 
   const [noDogVisible, setNoDogVisible] = useState(false);
@@ -52,8 +147,7 @@ export default function CreatePost() {
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [publishing, setPublishing] = useState(false);
 
-
-  //tu tez w jakich grupach jest user
+  // Example groups - eventually fetch these from backend
   const groups = useMemo<Group[]>(
     () => [
       { id: "g1", name: "Pieski Warszawa" },
@@ -65,7 +159,6 @@ export default function CreatePost() {
 
   const pickAndCropSquare = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    // tutaj zdjecie jakos przechowywac
     if (!perm.granted) return;
 
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -86,6 +179,7 @@ export default function CreatePost() {
 
     try {
       setChecking(true);
+      // Run the check logic
       const res = await checkDogInPhoto(selectedUri);
 
       if (!res.approved) {
@@ -93,6 +187,12 @@ export default function CreatePost() {
         return;
       }
 
+      // SAVE THE KEY
+      if (res.file_key) {
+        setUploadedKey(res.file_key);
+      }
+
+      // If approved, proceed to publish screen
       setCaption("");
       setShareOnProfile(true);
       setSelectedGroupIds([]);
@@ -110,11 +210,13 @@ export default function CreatePost() {
 
   const onPublish = async () => {
     if (!selectedUri || publishing) return;
-    if (!shareOnProfile && selectedGroupIds.length === 0) return;
 
     try {
       setPublishing(true);
+      
+      // Use the stored key
       await publishPost({
+        s3_key: uploadedKey || undefined, 
         imageUri: selectedUri,
         caption: caption.trim(),
         shareOnProfile,
@@ -122,6 +224,12 @@ export default function CreatePost() {
       });
 
       setPublishVisible(false);
+      setSelectedUri(null);
+      setUploadedKey(null); // Reset key
+      // Optional: Add success feedback or navigation here
+    } catch (e) {
+      console.error("Publish failed", e);
+      alert("Failed to publish post.");
     } finally {
       setPublishing(false);
     }
@@ -148,7 +256,6 @@ export default function CreatePost() {
         </Pressable>
 
         <View style={styles.buttonsRow}>
-
           <TouchableOpacity
             style={styles.secondaryBtn}
             onPress={pickAndCropSquare}
