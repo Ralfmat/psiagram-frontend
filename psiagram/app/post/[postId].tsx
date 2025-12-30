@@ -13,15 +13,20 @@ import {
   View,
   KeyboardAvoidingView, 
   Platform,
-  ActivityIndicator
+  ActivityIndicator,
+  Alert
 } from "react-native";
 
 export default function PostDetails() {
   const { postId } = useLocalSearchParams<{ postId: string }>();
   const [post, setPost] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Local state for UI responsiveness
   const [liked, setLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState(0);
   const [commentText, setCommentText] = useState("");
+  const [submittingComment, setSubmittingComment] = useState(false);
 
   useEffect(() => {
     if (postId) {
@@ -34,7 +39,9 @@ export default function PostDetails() {
       setLoading(true);
       const res = await client.get(`api/posts/${postId}/`);
       setPost(res.data);
-      // setLiked(res.data.is_liked) // If API returns this
+      // Initialize local state from API data
+      setLiked(res.data.is_liked || false); 
+      setLikesCount(res.data.likes_count || 0);
     } catch (e) {
       console.error(e);
     } finally {
@@ -42,12 +49,61 @@ export default function PostDetails() {
     }
   };
 
+  const handleLike = async () => {
+    try {
+      // Optimistic update
+      const previousLiked = liked;
+      const previousCount = likesCount;
+      
+      setLiked(!previousLiked);
+      setLikesCount(previousLiked ? previousCount - 1 : previousCount + 1);
+
+      const res = await client.post(`api/posts/${postId}/like/`);
+      
+      // Sync with server response if available
+      if (res.data.likes_count !== undefined) {
+         setLikesCount(res.data.likes_count);
+         setLiked(res.data.status === 'liked');
+      }
+    } catch (e) {
+      console.error("Like failed", e);
+    }
+  };
+
+  const handleComment = async () => {
+    if (!commentText.trim()) return;
+
+    try {
+      setSubmittingComment(true);
+      
+      // 1. Send request to backend
+      const res = await client.post(`api/posts/${postId}/comment/`, {
+        content: commentText,
+        post: postId
+      });
+      
+      // 2. Add the new comment to the list immediately (Optimistic-ish UI update)
+      const newComment = res.data;
+      setPost((prev: any) => ({
+        ...prev,
+        comments: [...(prev.comments || []), newComment]
+      }));
+      
+      // 3. Clear text
+      setCommentText("");
+    } catch (e) {
+      console.error("Comment failed", e);
+      Alert.alert("Error", "Could not post comment.");
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
   if (loading || !post) {
      return <SafeAreaView style={styles.screen}><ActivityIndicator /></SafeAreaView>;
   }
 
-  // Adjust display based on API data structure
-  const likesToShow = liked ? (post.likes_count || 0) + 1 : (post.likes_count || 0);
+  // Use local likesCount for display
   const comments = post.comments || [];
 
   return (
@@ -64,7 +120,6 @@ export default function PostDetails() {
           </View>
 
           <View style={styles.userRow}>
-             {/* Not all posts have author avatar in serializer, might need to fetch or include in serializer */}
             <View style={styles.userAvatar} /> 
             <Pressable onPress={() => router.push(`/user/${post.author}`)}>
               <Text style={styles.headerTitle}>{post.author_username}</Text>
@@ -77,11 +132,11 @@ export default function PostDetails() {
 
           <View style={styles.actionsRow}>
             <View style={styles.actionGroup}>
-              <Pressable style={styles.actionBtn} onPress={() => setLiked((p) => !p)} hitSlop={8}>
+              <Pressable style={styles.actionBtn} onPress={handleLike} hitSlop={8}>
                 <Ionicons name={liked ? "paw" : "paw-outline"} size={30} color="#69324C" />
               </Pressable>
               <View style={styles.countsRow}>
-                <Text style={styles.countText}>{likesToShow}</Text>
+                <Text style={styles.countText}>{likesCount}</Text>
               </View> 
             </View>
 
@@ -107,9 +162,18 @@ export default function PostDetails() {
                   onChangeText={setCommentText}
                   placeholder="add a comment"
                   placeholderTextColor="#777"
-                  style={styles.commentInput}/>
-                  <Pressable onPress={() => setCommentText("")} hitSlop={8}>
-                    <Ionicons name="send" size={20} color="#69324C" />
+                  style={styles.commentInput}
+                  // Added for "Send with Enter" functionality:
+                  returnKeyType="send" 
+                  onSubmitEditing={handleComment}
+                  blurOnSubmit={false} // Optional: keeps keyboard open after sending
+                />
+                  <Pressable onPress={handleComment} hitSlop={8} disabled={submittingComment}>
+                    {submittingComment ? (
+                       <ActivityIndicator size="small" color="#69324C" />
+                    ) : (
+                       <Ionicons name="send" size={20} color="#69324C" />
+                    )}
                   </Pressable>
               </View>
            </View>
@@ -133,7 +197,6 @@ export default function PostDetails() {
 }
 
 const styles = StyleSheet.create({
-    // ... (Use same styles as provided in the uploaded file)
     screen: { flex: 1, backgroundColor: "#FAF7F0" },
     header: { height: 56, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#FAF7F0", marginBottom: 20 },
     backRow: { flexDirection: "row", alignItems: "center", width: 60 },
