@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useStorageState } from "../hooks/useStorageState";
-import client from "../api/client";
+import client, { registerAuthCallbacks } from "../api/client";
 import { Alert } from "react-native";
 
 const AuthContext = React.createContext<{
@@ -26,7 +26,22 @@ export function useSession() {
 }
 
 export function SessionProvider(props: React.PropsWithChildren) {
+  // session tutaj jest teraz stringiem JSON zawierającym tokeny i daty
   const [[isLoading, session], setSession] = useStorageState("session");
+
+  useEffect(() => {
+    // Rejestrujemy callbacki, aby interceptory axios mogły sterować sesją
+    registerAuthCallbacks(
+      () => {
+        // onLogout
+        setSession(null); 
+      },
+      (newSessionJson) => {
+        // onTokenRefresh - aktualizuje storage i stan React
+        setSession(newSessionJson); 
+      }
+    );
+  }, [setSession]);
 
   return (
     <AuthContext.Provider
@@ -38,12 +53,15 @@ export function SessionProvider(props: React.PropsWithChildren) {
               password,
             });
 
-            const token = response.data.access; 
+            const data = response.data;
             
-            if (token) {
-              setSession(token);
+            // Sprawdzamy czy mamy wymagane pola w odpowiedzi
+            if (data.access && data.refresh) {
+              // Zapisujemy całą odpowiedź (tokeny + expiration + user) jako JSON
+              // Dzięki temu client.ts będzie miał dostęp do access_expiration
+              setSession(JSON.stringify(data));
             } else {
-              Alert.alert("Login Error", "No token received from server.");
+              Alert.alert("Login Error", "Invalid response from server.");
             }
           } catch (error: any) {
             console.error("Login failed:", error);
