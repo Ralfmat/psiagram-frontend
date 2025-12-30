@@ -1,8 +1,8 @@
 import { useSession } from "@/context/ctx";
-import client from "@/api/client"; // Ensure client is imported
+import client from "@/api/client"; 
 import * as ImagePicker from "expo-image-picker";
 import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useMemo, useState, useEffect } from "react";
+import React, { useCallback, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
@@ -19,7 +19,8 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  ActivityIndicator
+  ActivityIndicator,
+  Alert
 } from "react-native";
 
 const { width } = Dimensions.get("window");
@@ -28,8 +29,50 @@ const NUM_COLS = 3;
 const H_PADDING = 18;
 const TILE = (width - H_PADDING * 2 - GAP * (NUM_COLS - 1)) / NUM_COLS;
 
+/**
+ * Helper to upload image to S3
+ * Returns the file_key if successful, or null if failed.
+ */
+async function uploadToS3(uri: string): Promise<string | null> {
+  try {
+    // 1. Prepare file metadata
+    const filename = uri.split("/").pop() || "avatar.jpg";
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+    // 2. Initiate Upload (Get Presigned URL from Backend)
+    // We reuse the existing generic S3 signer endpoint
+    const initRes = await client.post("/api/v1/rekognition/initiate-upload/", {
+      filename,
+      content_type: type,
+    });
+    const { upload_url, file_key } = initRes.data;
+
+    // 3. Upload to S3 directly via standard fetch
+    const imageBlob = await fetch(uri).then((r) => r.blob());
+    
+    const uploadRes = await fetch(upload_url, {
+      method: "PUT",
+      body: imageBlob,
+      headers: {
+        "Content-Type": type,
+      },
+    });
+
+    if (uploadRes.status !== 200) {
+      throw new Error("S3 Upload failed");
+    }
+
+    return file_key;
+  } catch (error) {
+    console.error("Avatar Upload Error:", error);
+    Alert.alert("Error", "Failed to upload image.");
+    return null;
+  }
+}
+
 export default function MyProfile() {
-  const { signOut, session } = useSession(); // Access session if needed for tokens
+  const { signOut } = useSession(); 
   
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<number | null>(null);
@@ -47,9 +90,7 @@ export default function MyProfile() {
 
   // Edit Form State
   const [editUsername, setEditUsername] = useState("");
-  const [editName, setEditName] = useState("");
   const [editBio, setEditBio] = useState("");
-  const [editPassword, setEditPassword] = useState("");
 
   // Fetch Data Function
   const fetchData = async () => {
@@ -70,8 +111,6 @@ export default function MyProfile() {
 
         // 3. Fetch User Posts
         const postsRes = await client.get(`api/posts/user/${currentId}/`);
-        console.log(postsRes);
-        
         setUserPosts(postsRes.data.results || []);
       }
     } catch (e) {
@@ -88,12 +127,6 @@ export default function MyProfile() {
     }, [])
   );
 
-  const deleteAvatar = () => {
-    // TODO: Implement API call to delete avatar
-    setProfileData((prev: any) => ({ ...prev, avatar: null }));
-    setAvatarVisible(false);
-  };
-
   const pickNewAvatar = async () => {
     try {
       setChangingAvatar(true);
@@ -102,21 +135,37 @@ export default function MyProfile() {
         setChangingAvatar(false);
         return;
       }
+      
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.9,
+        quality: 0.8,
       });
 
       if (!result.canceled) {
         const uri = result.assets[0]?.uri;
-        // TODO: Upload image to API here
-        if (uri) {
-           setProfileData((prev: any) => ({ ...prev, avatar: uri }));
+        
+        if (uri && userId) {
+          // 1. Upload the image to S3
+          const s3Key = await uploadToS3(uri);
+          
+          if (s3Key) {
+            // 2. Patch the profile with the new s3_key
+            // The backend serializer will move the file and update the 'avatar' field
+            await client.patch(`api/profiles/${userId}/`, {
+              s3_key: s3Key
+            });
+            
+            // 3. Refresh data to show the new avatar
+            await fetchData();
+            setAvatarVisible(false);
+          }
         }
-        setAvatarVisible(false);
       }
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Error", "Could not update avatar");
     } finally {
       setChangingAvatar(false);
     }
@@ -125,27 +174,33 @@ export default function MyProfile() {
   const openEdit = () => {
     if (!profileData) return;
     setEditUsername(profileData.user.username);
-    setEditName(""); // Name is not in UserProfile currently, maybe add to User model?
     setEditBio(profileData.bio || "");
-    setEditPassword("");
     setEditVisible(true);
   };
 
   const saveEdit = async () => {
-    // TODO: Implement API call to update profile
-    // Simulate local update for now
-    setProfileData((prev: any) => ({
-      ...prev,
-      user: { ...prev.user, username: editUsername },
-      bio: editBio,
-    }));
-    setEditVisible(false);
+    if (!userId) return;
+
+    try {
+        // Simple patch for bio (and potentially username if backend supports it nested)
+        await client.patch(`api/profiles/${userId}/`, {
+            bio: editBio,
+        });
+        
+        // Refresh to show changes
+        await fetchData();
+        setEditVisible(false);
+    } catch (e) {
+        console.error("Edit failed", e);
+        Alert.alert("Error", "Failed to update profile.");
+    }
   };
 
   const confirmDelete = async () => {
     try {
       setDeleting(true);
-      // TODO: fetch DELETE API
+      // TODO: Add actual DELETE endpoint call here if available
+      // await client.delete(`users/me/`); 
       await signOut(); 
     } finally {
       setDeleting(false);
@@ -198,7 +253,7 @@ export default function MyProfile() {
         </View>
 
         <View style={styles.bioBox}>
-           {/* Displaying username as name for now, or add first_name/last_name to serializer */}
+           {/* Displaying email/username */}
           <Text style={styles.name}>{profileData?.user?.email}</Text> 
           <View style={styles.line} /> 
           {bioLines.map((line: string, idx: number) => (
@@ -228,7 +283,7 @@ export default function MyProfile() {
             onPress={() =>
               router.push({
                 pathname: "/post/[postId]",
-                params: { postId: item.id }, // Pass ID to fetch details
+                params: { postId: item.id },
               })
             }
           >
@@ -238,8 +293,6 @@ export default function MyProfile() {
         showsVerticalScrollIndicator={false}
       />
 
-      {/* ... (Modals for Edit, Delete, Avatar remain mostly the same, just updated with new state variables) ... */}
-      
       {/* Edit Modal */}
       <Modal visible={editVisible} transparent animationType="fade" onRequestClose={() => setEditVisible(false)}>
         <Pressable style={styles.backdrop} onPress={() => setEditVisible(false)}>
@@ -254,8 +307,6 @@ export default function MyProfile() {
                 <Text style={styles.modalLabel}>bio</Text>
                 <TextInput value={editBio} onChangeText={setEditBio} style={[styles.modalInput, styles.modalMultiline]} multiline />
 
-                {/* Password field - logic to change password would be separate */}
-                
                 <View style={styles.modalButtonsRow}>
                   <TouchableOpacity style={[styles.modalBtn, styles.modalBtnGhost]} onPress={() => setEditVisible(false)}>
                     <Text style={styles.modalBtnGhostText}>cancel</Text>
@@ -270,7 +321,7 @@ export default function MyProfile() {
         </Pressable>
       </Modal>
 
-      {/* Delete Modal - Kept same as original */}
+      {/* Delete Modal */}
       <Modal visible={deleteVisible} transparent animationType="fade" onRequestClose={() => setDeleteVisible(false)}>
         <Pressable style={styles.backdrop} onPress={() => setDeleteVisible(false)}>
           <Pressable style={styles.popoutCardDelete} onPress={() => {}}>
@@ -288,7 +339,7 @@ export default function MyProfile() {
         </Pressable>
       </Modal>
 
-       {/* Avatar Modal - Kept same but uses profileData.avatar */}
+       {/* Avatar Modal */}
        <Modal visible={avatarVisible} transparent animationType="fade" onRequestClose={() => setAvatarVisible(false)}>
         <Pressable style={styles.backdrop} onPress={() => setAvatarVisible(false)}>
           <Pressable style={styles.avatarCard} onPress={() => {}}>
@@ -302,8 +353,17 @@ export default function MyProfile() {
               <TouchableOpacity style={[styles.modalBtn, styles.modalBtnGhost]} onPress={() => setAvatarVisible(false)}>
                 <Text style={styles.modalBtnGhostText}>cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtn, styles.modalBtnPrimary]} onPress={pickNewAvatar} disabled={changingAvatar}>
-                <Text style={styles.modalBtnPrimaryText}>{changingAvatar ? "opening..." : "change photo"}</Text>
+              
+              <TouchableOpacity 
+                style={[styles.modalBtn, styles.modalBtnPrimary]} 
+                onPress={pickNewAvatar} 
+                disabled={changingAvatar}
+              >
+                {changingAvatar ? (
+                    <ActivityIndicator color="#FAF7F0" />
+                ) : (
+                    <Text style={styles.modalBtnPrimaryText}>change photo</Text>
+                )}
               </TouchableOpacity>
             </View>
           </Pressable>
@@ -314,7 +374,6 @@ export default function MyProfile() {
   );
 }
 
-// ... (Stat component and styles remain the same)
 function Stat({ value, label }: { value: number; label: string }) {
   return (
     <View style={styles.stat}>
@@ -325,7 +384,6 @@ function Stat({ value, label }: { value: number; label: string }) {
 }
 
 const styles = StyleSheet.create({
-  // ... (Paste original styles here)
   screen: { flex: 1, backgroundColor: "#FAF7F0" },
   listContent: { paddingHorizontal: H_PADDING, paddingTop: 10, paddingBottom: 50 },
   profileCard: { backgroundColor: "#FAF7F0", padding: 12 },
