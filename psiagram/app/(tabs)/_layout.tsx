@@ -1,19 +1,59 @@
-import { Tabs, useRouter } from "expo-router";
-import { Pressable, Text,Image } from "react-native";
+import CustomTabBar from "@/components/tabBar";
+import type { Href } from "expo-router";
+import { Tabs, router, usePathname } from "expo-router";
+import React, { useState } from "react";
+import { Pressable, StyleSheet,Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 export default function TabsLayout() {
-  const router = useRouter();
+  const pathname = usePathname();
+  const isNotifications = pathname.includes("notifications");
+
+  const [returnTo, setReturnTo] = useState<Href>("/(tabs)/feed");
+
+  const openNotifications = () => {
+    setReturnTo(pathname as Href);
+    router.push("/(tabs)/notifications");
+  };
+
+  const closeNotifications = () => {
+    router.replace(returnTo);
+  };
 
   return (
     <Tabs
+      tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
         tabBarStyle: { display: 'none' },
+        headerShown: true,
+
+        headerLeft: () => (
+          <Pressable
+            onPress={() => router.push("/(tabs)/feed")}
+            style={styles.headerLeft}
+            hitSlop={10}
+          >
+            <Image
+              source={require("@/assets/images/logo_psiagram.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </Pressable>
+        ),
+
         headerRight: () => (
           <Pressable
-            style={{ marginRight: 16 }}
-            onPress={() => router.push("/(tabs)/notifications")}
+            onPress={() => {
+              if (isNotifications) closeNotifications();
+              else openNotifications();
+            }}
+            style={styles.headerRight}
+            hitSlop={10}
           >
-          <Ionicons name="notifications-outline" size={26} color="#0B380C" />
+            <Ionicons
+              name={isNotifications ? "notifications" : "notifications-outline"}
+              size={26}
+              color="#69324C"
+            />
           </Pressable>
         ),
       }}
@@ -37,3 +77,11 @@ export default function TabsLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  headerLeft: { paddingLeft: 10 },
+
+  logo: { width: 110, height: 110 },
+
+  headerRight: { paddingRight: 10 },
+});

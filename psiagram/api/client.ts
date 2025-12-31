@@ -1,13 +1,30 @@
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
-import Constants from "expo-constants";
 import { Platform } from "react-native";
 
-// UWAGA: W React Native na Androidzie 'localhost' nie zadziała.
-// Trzeba użyć swojego adresu IP z sieci lokalnej (np. 192.168.x.x)
-// lub specjalnego adresu dla emulatora Androida: 'http://10.0.2.2:8000/api/v1/'
-// na razie używamy localhost dla testów na web
-const apiUrl = Constants.expoConfig?.extra?.apiUrl || "http://localhost:8000/";
+
+interface SessionData {
+  access: string;
+  refresh: string;
+  access_expiration: string;
+  refresh_expiration: string;
+  user?: any;
+}
+
+const apiUrl = "http://127.0.0.1:8000/";
+
+// Zmienne do komunikacji z Contextem
+let logoutCallback: (() => void) | null = null;
+let refreshCallback: ((newSessionJson: string) => void) | null = null;
+
+// Rejestracja callbacków z ctx.tsx
+export const registerAuthCallbacks = (
+  onLogout: () => void,
+  onTokenRefresh: (newSessionJson: string) => void
+) => {
+  logoutCallback = onLogout;
+  refreshCallback = onTokenRefresh;
+};
 
 const client = axios.create({
   baseURL: apiUrl,
@@ -16,46 +33,155 @@ const client = axios.create({
   },
 });
 
-// (Request Interceptor)
+// Pomocnicza funkcja do pobierania sesji
+async function getSessionFromStorage(): Promise<SessionData | null> {
+  try {
+    let sessionJson: string | null = null;
+    if (Platform.OS === "web") {
+      if (typeof localStorage !== "undefined") {
+        sessionJson = localStorage.getItem("session");
+      }
+    } else {
+      sessionJson = await SecureStore.getItemAsync("session");
+    }
+
+    if (sessionJson) {
+      return JSON.parse(sessionJson) as SessionData;
+    }
+  } catch (e) {
+    console.error("Error parsing session:", e);
+  }
+  return null;
+}
+
+// Pomocnicza funkcja do sprawdzania czy token wygasł (lub wygaśnie za chwilę)
+function isTokenExpired(expirationIso: string): boolean {
+  const expirationDate = new Date(expirationIso);
+  const now = new Date();
+  // Bufor bezpieczeństwa: uznajemy za wygasły, jeśli zostało mniej niż 60 sekund
+  return now.getTime() + 60 * 1000 > expirationDate.getTime();
+}
+
+// Funkcja odświeżająca token (wyodrębniona, bo używana w obu interceptorach)
+async function refreshAuthToken(refreshToken: string): Promise<SessionData | null> {
+  try {
+    const response = await axios.post(`${apiUrl}api/auth/token/refresh/`, {
+      refresh: refreshToken,
+    });
+
+    // Backend zwraca nową strukturę: access, refresh, expirations
+    const newSessionData: SessionData = response.data;
+
+    // Aktualizujemy stan w React (i storage przez hooka w ctx)
+    if (refreshCallback) {
+      refreshCallback(JSON.stringify(newSessionData));
+    }
+    
+    return newSessionData;
+  } catch (error) {
+    console.error("Failed to refresh token:", error);
+    return null;
+  }
+}
+
+// Request Interceptor
 client.interceptors.request.use(
   async (config) => {
-    try {
-      let token: string | null = null;
+    // Nie dodajemy tokena do zapytań logowania/rejestracji, żeby uniknąć pętli
+    if (config.url?.includes("/login") || config.url?.includes("/register")) {
+      return config;
+    }
 
-      // Token logic must be consistent with how you store it in useStorageState.ts
-      // The session key in context/ctx.tsx is "session"
-      if (Platform.OS === "web") {
-        if (typeof localStorage !== "undefined") {
-          token = localStorage.getItem("session");
+    let session = await getSessionFromStorage();
+
+    if (session && session.access && session.access_expiration) {
+      // 1. Sprawdź czy Access Token wygasł
+      if (isTokenExpired(session.access_expiration)) {
+        console.log("Access token expired or close to expiration. Refreshing...");
+
+        // 2. Sprawdź czy Refresh Token jest wciąż ważny (jeśli mamy jego datę)
+        if (session.refresh_expiration && isTokenExpired(session.refresh_expiration)) {
+             console.log("Refresh token also expired. Logging out.");
+             if (logoutCallback) logoutCallback();
+             throw new axios.Cancel("Session expired");
         }
-      } else {
-        token = await SecureStore.getItemAsync("session");
+
+        // 3. Próba odświeżenia
+        const newSession = await refreshAuthToken(session.refresh);
+        if (newSession) {
+          session = newSession; // Użyj nowych danych
+        } else {
+          // Jeśli odświeżanie się nie udało (np. refresh token unieważniony)
+          if (logoutCallback) logoutCallback();
+          throw new axios.Cancel("Token refresh failed");
+        }
       }
 
-      // If token exists, add it to the header
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    } catch (error) {
-      console.error("Error fetching token from interceptor:", error);
+      // Dodaj (potencjalnie nowy) token do nagłówka
+      config.headers.Authorization = `Bearer ${session.access}`;
     }
 
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// (Response Interceptor)
-// handle token expiration or unauthorized responses globally
+// Response Interceptor (Fallback na 401)
+// Nadal warto to trzymać na wypadek, gdyby czas na urządzeniu był źle ustawiony
+// lub token został unieważniony po stronie serwera przed czasem.
+let isRefreshing = false;
+let failedQueue: any[] = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 client.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response && error.response.status === 401) {
-      // Here we can add logic to log out the user or refresh the token
-      console.log("Token is missing or expired. Please log in again.");
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise(function (resolve, reject) {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return client(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      const session = await getSessionFromStorage();
+      
+      if (session && session.refresh) {
+         const newSession = await refreshAuthToken(session.refresh);
+         
+         if (newSession) {
+             processQueue(null, newSession.access);
+             isRefreshing = false;
+             originalRequest.headers.Authorization = `Bearer ${newSession.access}`;
+             return client(originalRequest);
+         }
+      }
+
+      // Jeśli dotarliśmy tutaj, odświeżanie się nie powiodło
+      processQueue(error, null);
+      isRefreshing = false;
+      if (logoutCallback) logoutCallback();
     }
+
     return Promise.reject(error);
   }
 );

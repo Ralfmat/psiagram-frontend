@@ -1,4 +1,4 @@
-import { Slot, useRouter, useSegments } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { SessionProvider, useSession } from "../context/ctx";
@@ -32,8 +32,13 @@ function InitialLayout() {
       </View>
     );
   }
-  // Slot renders current view (based on URL)
-  return <Slot />;
+  return (
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="post/[postId]" /> 
+      </Stack>
+    );
 }
 
 export default function RootLayout() {
