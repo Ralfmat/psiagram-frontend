@@ -38,8 +38,22 @@ function InitialLayout() {
 
 export default function RootLayout() {
   return (
-    <SessionProvider>
-      <InitialLayout />
-    </SessionProvider>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(tabs)" />
+    </Stack>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <AuthGate />
+
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(tabs)" />
+      </Stack>
+    </AuthProvider>
   );
 }
