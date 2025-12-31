@@ -13,6 +13,7 @@ export default function LoginScreen() {
   const handleLogin = () => {
     // tutaj normalnie walidacja i call do API
     signIn();
+    //router.replace("/feed");
   };
 
   return (
