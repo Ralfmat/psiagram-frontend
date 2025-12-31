@@ -1,6 +1,7 @@
 import { useSession } from "@/context/ctx";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+<<<<<<< HEAD
 import React, { useState } from "react";
 import { Dimensions, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
