@@ -1,10 +1,9 @@
 import CustomTabBar from "@/components/tabBar";
-import { Ionicons } from "@expo/vector-icons";
 import type { Href } from "expo-router";
 import { Tabs, router, usePathname } from "expo-router";
 import React, { useState } from "react";
-import { Image, Pressable, StyleSheet } from "react-native";
-
+import { Pressable, StyleSheet,Image } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 export default function TabsLayout() {
   const pathname = usePathname();
   const isNotifications = pathname.includes("notifications");
@@ -24,6 +23,7 @@ export default function TabsLayout() {
     <Tabs
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
+        tabBarStyle: { display: 'none' },
         headerShown: true,
 
         headerLeft: () => (
@@ -56,22 +56,24 @@ export default function TabsLayout() {
             />
           </Pressable>
         ),
-
-        headerTitle: "",
-        headerShadowVisible: false,
-        headerStyle: { backgroundColor: "#FAF7F0" },
-        headerLeftContainerStyle: { paddingLeft: 20 },
-        headerRightContainerStyle: { paddingRight: 20 },
       }}
     >
+      <Tabs.Screen name="feed" options={{
 
-      <Tabs.Screen name="groups"/>
-      <Tabs.Screen name="createPost"/>
-      <Tabs.Screen name="feed"/>
-      <Tabs.Screen name="search"/>
-      <Tabs.Screen name="myProfile"/>
-
-
+        headerTitle: () => (
+          <Image 
+            source={require("@/assets/images/logo_psiagram.png")} 
+            style={{ width: 170, height: 350 }} 
+            resizeMode="contain" 
+          />
+        ),
+        
+      }} />
+      <Tabs.Screen name="groups" options={{ title: "Groups"  }} />
+      <Tabs.Screen name="createPost" options={{ title:"Create" }} />
+      <Tabs.Screen name="search" options={{ title: "Search"}} />
+      <Tabs.Screen name="myProfile" options={{title: "Me" }} />
+    
     </Tabs>
   );
 }
