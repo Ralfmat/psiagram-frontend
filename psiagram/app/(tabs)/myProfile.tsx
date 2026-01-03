@@ -182,27 +182,31 @@ export default function MyProfile() {
     if (!userId) return;
 
     try {
-        // Simple patch for bio (and potentially username if backend supports it nested)
         await client.patch(`api/profiles/${userId}/`, {
             bio: editBio,
+            username: editUsername, 
         });
         
-        // Refresh to show changes
         await fetchData();
         setEditVisible(false);
-    } catch (e) {
+    } catch (e: any) {
         console.error("Edit failed", e);
-        Alert.alert("Error", "Failed to update profile.");
+        const msg = e.response?.data?.username 
+            ? `Username: ${e.response.data.username[0]}` 
+            : "Failed to update profile.";
+        Alert.alert("Error", msg);
     }
   };
 
   const confirmDelete = async () => {
     try {
       setDeleting(true);
-      // TODO: Add actual DELETE endpoint call here if available
-      // await client.delete(`users/me/`); 
+      await client.delete(`users/delete/`); 
+      
       await signOut(); 
-    } finally {
+    } catch (e) {
+      console.error("Delete failed", e);
+      Alert.alert("Error", "Failed to delete account.");
       setDeleting(false);
       setDeleteVisible(false);
     }
@@ -253,8 +257,6 @@ export default function MyProfile() {
         </View>
 
         <View style={styles.bioBox}>
-           {/* Displaying email/username */}
-          <Text style={styles.name}>{profileData?.user?.email}</Text> 
           <View style={styles.line} /> 
           {bioLines.map((line: string, idx: number) => (
             <Text key={idx} style={styles.bioLine}>
