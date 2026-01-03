@@ -1,7 +1,7 @@
 import client from "@/api/client";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -25,8 +25,9 @@ interface Post {
   is_liked: boolean;
   created_at: string;
   author_avatar: string | null;
+  group: number | null;
+  group_name: string | null;
 }
-
 
 export default function FeedScreen() {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -42,11 +43,7 @@ export default function FeedScreen() {
     if (url === null) return;
 
     try {
-      // If no URL provided, we are fetching the first page (feed/)
       const endpoint = url || "api/posts/feed/";
-      
-      // Note: If 'url' comes from 'next', it's an absolute URL. 
-      // client.get handles absolute URLs correctly by ignoring baseURL.
       const response = await client.get(endpoint);
 
       const newPosts = response.data.results;
@@ -103,19 +100,27 @@ export default function FeedScreen() {
 
   const renderItem = ({ item, index }: { item: Post; index: number }) => (
     <View style={styles.postContainer}>
-      {/* Header: User Info */}
+      {/* Header: User Info & Group Info */}
       <View style={styles.header}>
-        <Pressable
-          style={styles.userRow}
-          onPress={() => router.push(`/user/${item.author}`)}
-        >
-          {item.author_avatar ? (
-            <Image source={{ uri: item.author_avatar }} style={styles.userAvatar} />
-          ) : (
-            <View style={styles.userAvatar} />
-          )}
-          <Text style={styles.username}>{item.author_username}</Text>
+        <Pressable onPress={() => router.push(`/user/${item.author}`)}>
+            {item.author_avatar ? (
+              <Image source={{ uri: item.author_avatar }} style={styles.userAvatar} />
+            ) : (
+              <View style={styles.userAvatar} />
+            )}
         </Pressable>
+        
+        <View style={styles.headerTextContainer}>
+          <Pressable onPress={() => router.push(`/user/${item.author}`)}>
+             <Text style={styles.username}>{item.author_username}</Text>
+          </Pressable>
+          
+          {item.group_name && (
+             <Pressable onPress={() => router.push(`/(tabs)/group/${item.group}/posts`)}>
+                 <Text style={styles.groupText}>in {item.group_name}</Text>
+             </Pressable>
+          )}
+        </View>
       </View>
 
       {/* Post Image */}
@@ -195,22 +200,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 14,
     paddingVertical: 10,
-  },
-  userRow: {
-    flexDirection: "row",
-    alignItems: "center",
     gap: 8,
   },
   userAvatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: "#E9E3D8",
+  },
+  headerTextContainer: {
+    justifyContent: 'center',
   },
   username: {
     fontSize: 14,
     fontWeight: "bold",
     color: "#1E1E1E",
+  },
+  groupText: {
+    fontSize: 12,
+    color: "#5F7751",
+    fontWeight: "600",
   },
   postImage: {
     width: "100%",
