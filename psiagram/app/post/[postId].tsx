@@ -14,8 +14,19 @@ import {
   KeyboardAvoidingView, 
   Platform,
   ActivityIndicator,
-  Alert
+  Alert,
+  Modal,
+  FlatList,
+  TouchableOpacity
 } from "react-native";
+
+interface UserListItem {
+    id: number; // profile id
+    user_id: number; // user id
+    username: string;
+    avatar: string | null;
+    is_following: boolean;
+}
 
 export default function PostDetails() {
   const { postId } = useLocalSearchParams<{ postId: string }>();
@@ -27,21 +38,33 @@ export default function PostDetails() {
   const [likesCount, setLikesCount] = useState(0);
   const [commentText, setCommentText] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+
+  // Likes Modal State
+  const [likesModalVisible, setLikesModalVisible] = useState(false);
+  const [likesList, setLikesList] = useState<UserListItem[]>([]);
+  const [likesListLoading, setLikesListLoading] = useState(false);
 
   useEffect(() => {
     if (postId) {
-      fetchPost();
+      fetchPostData();
     }
   }, [postId]);
 
-  const fetchPost = async () => {
+  const fetchPostData = async () => {
     try {
       setLoading(true);
-      const res = await client.get(`api/posts/${postId}/`);
-      setPost(res.data);
-      // Initialize local state from API data
-      setLiked(res.data.is_liked || false); 
-      setLikesCount(res.data.likes_count || 0);
+      // Fetch post and current user info (to know who "I" am for the follow buttons)
+      const [postRes, meRes] = await Promise.all([
+        client.get(`api/posts/${postId}/`),
+        client.get("users/me/") 
+      ]);
+      
+      setPost(postRes.data);
+      setCurrentUserId(meRes.data.id);
+      
+      setLiked(postRes.data.is_liked || false); 
+      setLikesCount(postRes.data.likes_count || 0);
     } catch (e) {
       console.error(e);
     } finally {
@@ -51,7 +74,6 @@ export default function PostDetails() {
 
   const handleLike = async () => {
     try {
-      // Optimistic update
       const previousLiked = liked;
       const previousCount = likesCount;
       
@@ -60,7 +82,6 @@ export default function PostDetails() {
 
       const res = await client.post(`api/posts/${postId}/like/`);
       
-      // Sync with server response if available
       if (res.data.likes_count !== undefined) {
          setLikesCount(res.data.likes_count);
          setLiked(res.data.status === 'liked');
@@ -70,29 +91,55 @@ export default function PostDetails() {
     }
   };
 
-  const handleComment = async () => {
-    if (!commentText.trim()) return;
+  const openLikesList = async () => {
+    setLikesModalVisible(true);
+    setLikesListLoading(true);
+    try {
+        const res = await client.get(`api/posts/${postId}/likes/`);
+        setLikesList(res.data);
+    } catch (e) {
+        console.error("Failed to fetch likes list", e);
+    } finally {
+        setLikesListLoading(false);
+    }
+  };
+
+  const toggleListFollow = async (targetUserId: number, currentStatus: boolean, index: number) => {
+    // Optimistic update logic
+    const newList = [...likesList];
+    newList[index].is_following = !currentStatus;
+    setLikesList(newList);
 
     try {
+        await client.post(`api/profiles/${targetUserId}/follow/`);
+    } catch (e) {
+        console.error("Follow toggle failed", e);
+        const revertedList = [...likesList];
+        revertedList[index].is_following = currentStatus;
+        setLikesList(revertedList);
+    }
+  };
+
+  const navigateToUser = (targetId: number) => {
+    setLikesModalVisible(false);
+    router.push({ pathname: "/user/[userId]", params: { userId: targetId } });
+  };
+
+  const handleComment = async () => {
+    if (!commentText.trim()) return;
+    try {
       setSubmittingComment(true);
-      
-      // 1. Send request to backend
       const res = await client.post(`api/posts/${postId}/comment/`, {
         content: commentText,
         post: postId
       });
-      
-      // 2. Add the new comment to the list immediately (Optimistic-ish UI update)
       const newComment = res.data;
       setPost((prev: any) => ({
         ...prev,
         comments: [...(prev.comments || []), newComment]
       }));
-      
-      // 3. Clear text
       setCommentText("");
     } catch (e) {
-      console.error("Comment failed", e);
       Alert.alert("Error", "Could not post comment.");
     } finally {
       setSubmittingComment(false);
@@ -103,7 +150,6 @@ export default function PostDetails() {
      return <SafeAreaView style={styles.screen}><ActivityIndicator /></SafeAreaView>;
   }
 
-  // Use local likesCount for display
   const comments = post.comments || [];
 
   return (
@@ -120,7 +166,14 @@ export default function PostDetails() {
           </View>
 
           <View style={styles.userRow}>
-            <View style={styles.userAvatar} /> 
+            <Pressable onPress={() => router.push(`/user/${post.author}`)}>
+               {post.author_avatar ? (
+                  <Image source={{ uri: post.author_avatar }} style={styles.userAvatar} />
+               ) : (
+                  <View style={[styles.userAvatar, { backgroundColor: "#E9E3D8" }]} />
+               )}
+            </Pressable>
+            
             <Pressable onPress={() => router.push(`/user/${post.author}`)}>
               <Text style={styles.headerTitle}>{post.author_username}</Text>
             </Pressable>
@@ -135,9 +188,13 @@ export default function PostDetails() {
               <Pressable style={styles.actionBtn} onPress={handleLike} hitSlop={8}>
                 <Ionicons name={liked ? "paw" : "paw-outline"} size={30} color="#69324C" />
               </Pressable>
-              <View style={styles.countsRow}>
-                <Text style={styles.countText}>{likesCount}</Text>
-              </View> 
+              
+              {/* CLICKABLE LIKES COUNT */}
+              <Pressable onPress={openLikesList} hitSlop={8}>
+                  <View style={styles.countsRow}>
+                    <Text style={styles.countText}>{likesCount}</Text>
+                  </View> 
+              </Pressable>
             </View>
 
             <View style={styles.actionGroup}>
@@ -151,7 +208,6 @@ export default function PostDetails() {
           </View>
 
           <View style={styles.captionRow}>
-            <Text style={styles.captionUser}>{post.author_username} </Text>
             <Text style={styles.captionText}>{post.caption}</Text>
           </View>
 
@@ -163,10 +219,9 @@ export default function PostDetails() {
                   placeholder="add a comment"
                   placeholderTextColor="#777"
                   style={styles.commentInput}
-                  // Added for "Send with Enter" functionality:
                   returnKeyType="send" 
                   onSubmitEditing={handleComment}
-                  blurOnSubmit={false} // Optional: keeps keyboard open after sending
+                  blurOnSubmit={false}
                 />
                   <Pressable onPress={handleComment} hitSlop={8} disabled={submittingComment}>
                     {submittingComment ? (
@@ -192,6 +247,58 @@ export default function PostDetails() {
           <View style={{ height: 24 }} />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* LIKES LIST MODAL */}
+      <Modal visible={likesModalVisible} transparent animationType="fade" onRequestClose={() => setLikesModalVisible(false)}>
+        <Pressable style={styles.backdrop} onPress={() => setLikesModalVisible(false)}>
+            <Pressable style={styles.listCard} onPress={() => {}}>
+                <Text style={styles.popoutTitle}>Likes</Text>
+                
+                {likesListLoading ? (
+                    <ActivityIndicator color="#69324C" />
+                ) : (
+                    <FlatList 
+                        data={likesList}
+                        keyExtractor={(item) => String(item.id)}
+                        showsVerticalScrollIndicator={false}
+                        renderItem={({item, index}) => (
+                            <View style={styles.userRow}>
+                                <TouchableOpacity 
+                                    style={styles.userInfo} 
+                                    onPress={() => navigateToUser(item.user_id)}
+                                >
+                                    {item.avatar ? (
+                                        <Image source={{ uri: item.avatar }} style={styles.listAvatar} />
+                                    ) : (
+                                        <View style={[styles.listAvatar, {backgroundColor: "#E9E3D8"}]} />
+                                    )}
+                                    <Text style={styles.listUsername}>{item.username}</Text>
+                                </TouchableOpacity>
+                                
+                                {item.user_id !== currentUserId && (
+                                    <TouchableOpacity 
+                                        style={[
+                                            styles.miniFollowBtn,
+                                            item.is_following ? styles.miniFollowingBtn : styles.miniFollowBtnActive
+                                        ]}
+                                        onPress={() => toggleListFollow(item.user_id, item.is_following, index)}
+                                    >
+                                        <Text style={[
+                                            styles.miniFollowText,
+                                            item.is_following ? styles.miniFollowingText : styles.miniFollowTextActive
+                                        ]}>
+                                            {item.is_following ? "following" : "follow"}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                        )}
+                    />
+                )}
+            </Pressable>
+        </Pressable>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -221,4 +328,22 @@ const styles = StyleSheet.create({
     commentLine: { flexDirection: "row", flexWrap: "wrap", marginBottom: 6 },
     commentLineUser: { fontSize: 12, fontWeight: "800", color: "#1E1E1E" },
     commentLineText: { fontSize: 12, color: "#1E1E1E" },
+
+    // Modal Styles
+    backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", padding: 24 },
+    listCard: { backgroundColor: "#FAF7F0", borderRadius: 18, padding: 16, height: "60%", width: "100%" },
+    popoutTitle: { fontSize: 16, fontWeight: "800", color: "#1E1E1E", marginBottom: 16, textAlign: "center", textTransform: "capitalize" },
+    
+    // List Item Styles
+    listAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#E9E3D8", marginRight: 10, borderWidth: 1, borderColor: "#69324C" },
+    listUsername: { fontSize: 14, fontWeight: "bold", color: "#1E1E1E" },
+    userInfo: { flexDirection: "row", alignItems: "center", flex: 1 },
+    
+    // Mini Buttons
+    miniFollowBtn: { borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12, borderWidth: 1 },
+    miniFollowBtnActive: { backgroundColor: "#69324C", borderColor: "#69324C" },
+    miniFollowingBtn: { backgroundColor: "transparent", borderColor: "#C9BEB1" },
+    miniFollowText: { fontSize: 11, fontWeight: "bold" },
+    miniFollowTextActive: { color: "#FAF7F0" },
+    miniFollowingText: { color: "#1E1E1E" },
 });
