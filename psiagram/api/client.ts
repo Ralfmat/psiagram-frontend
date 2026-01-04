@@ -11,7 +11,7 @@ interface SessionData {
   user?: any;
 }
 
-const apiUrl = "http://127.0.0.1:8000/";
+const apiUrl = "http://psiagram-env.eba-padhbqfj.eu-central-1.elasticbeanstalk.com/";
 
 // Zmienne do komunikacji z Contextem
 let logoutCallback: (() => void) | null = null;
