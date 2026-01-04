@@ -14,7 +14,10 @@ import {
   RefreshControl,
 } from "react-native";
 
+// --- Interfaces ---
+
 interface Post {
+  type: "post";
   id: number;
   author: number;
   author_username: string;
@@ -29,28 +32,82 @@ interface Post {
   group_name: string | null;
 }
 
+interface Event {
+  type: "event";
+  id: number;
+  name: string;
+  description: string;
+  location: string | null;
+  start_time: string;
+  end_time: string;
+  group: number | null;
+  group_name: string | null;
+  organizer: number;
+  organizer_username: string;
+  attendees_count: number;
+  created_at: string;
+}
+
+type FeedItem = Post | Event;
+
 export default function FeedScreen() {
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  
+  // We keep track of cursors for both streams
+  const [postsCursor, setPostsCursor] = useState<string | null>(null);
+  const [eventsCursor, setEventsCursor] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchPosts();
+    fetchFeed(true);
   }, []);
 
-  const fetchPosts = async (url?: string | null) => {
-    if (url === null) return;
-
+  const fetchFeed = async (reset = false) => {
     try {
-      const endpoint = url || "api/posts/feed/";
-      const response = await client.get(endpoint);
+      const postsUrl = reset ? "api/posts/feed/" : postsCursor;
+      const eventsUrl = reset ? "api/events/feed/" : eventsCursor;
 
-      const newPosts = response.data.results;
-      const nextLink = response.data.next;
+      if (!reset && !postsUrl && !eventsUrl) return;
 
-      setPosts((prev) => (url ? [...prev, ...newPosts] : newPosts));
-      setNextCursor(nextLink);
+      const promises = [];
+      if (postsUrl) promises.push(client.get(postsUrl));
+      if (eventsUrl) promises.push(client.get(eventsUrl));
+
+      if (promises.length === 0) return;
+
+      const responses = await Promise.all(promises);
+
+      let newItems: FeedItem[] = [];
+      let nextPosts = reset ? null : postsCursor;
+      let nextEvents = reset ? null : eventsCursor;
+
+      let responseIndex = 0;
+      
+      if (postsUrl) {
+        const pRes = responses[responseIndex++];
+        const fetchedPosts = pRes.data.results.map((p: any) => ({ ...p, type: "post" }));
+        newItems = [...newItems, ...fetchedPosts];
+        nextPosts = pRes.data.next;
+      }
+      
+      if (eventsUrl) {
+        const eRes = responses[responseIndex++];
+        const fetchedEvents = eRes.data.results.map((e: any) => ({ ...e, type: "event" }));
+        newItems = [...newItems, ...fetchedEvents];
+        nextEvents = eRes.data.next;
+      }
+
+      setPostsCursor(nextPosts);
+      setEventsCursor(nextEvents);
+
+      setFeedItems((prev) => {
+        const combined = reset ? newItems : [...prev, ...newItems];
+        return combined.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      });
+
     } catch (error) {
       console.error("Feed fetch error:", error);
     } finally {
@@ -61,46 +118,89 @@ export default function FeedScreen() {
 
   const handleRefresh = () => {
     setRefreshing(true);
-    setNextCursor(null);
-    fetchPosts();
+    setPostsCursor(null);
+    setEventsCursor(null);
+    fetchFeed(true);
   };
 
   const handleLoadMore = () => {
-    if (!loading && nextCursor) {
-      fetchPosts(nextCursor);
+    if (!loading) {
+      fetchFeed(false);
     }
   };
 
-  const toggleLike = async (postIndex: number) => {
-    const post = posts[postIndex];
-    const originalLiked = post.is_liked;
-    const originalCount = post.likes_count;
+  const toggleLike = async (itemIndex: number) => {
+    const item = feedItems[itemIndex];
+    if (item.type !== 'post') return;
 
-    const updatedPosts = [...posts];
-    updatedPosts[postIndex] = {
-      ...post,
+    const originalLiked = item.is_liked;
+    const originalCount = item.likes_count;
+
+    const updatedItems = [...feedItems];
+    updatedItems[itemIndex] = {
+      ...item,
       is_liked: !originalLiked,
       likes_count: originalLiked ? originalCount - 1 : originalCount + 1,
-    };
-    setPosts(updatedPosts);
+    } as Post;
+    setFeedItems(updatedItems);
 
     try {
-      await client.post(`api/posts/${post.id}/like/`);
+      await client.post(`api/posts/${item.id}/like/`);
     } catch (error) {
       console.error("Like failed", error);
-      const revertedPosts = [...posts];
-      revertedPosts[postIndex] = {
-        ...post,
+      const revertedItems = [...feedItems];
+      revertedItems[itemIndex] = {
+        ...item,
         is_liked: originalLiked,
         likes_count: originalCount,
-      };
-      setPosts(revertedPosts);
+      } as Post;
+      setFeedItems(revertedItems);
     }
   };
 
-  const renderItem = ({ item, index }: { item: Post; index: number }) => (
+  const renderItem = ({ item, index }: { item: FeedItem; index: number }) => {
+    if (item.type === 'event') {
+      return renderEvent(item);
+    }
+    return renderPost(item, index);
+  };
+
+  const renderEvent = (event: Event) => (
+    <View style={[styles.postContainer, styles.eventContainer]}>
+      {/* Updated Header: Removed "in Group" part */}
+      <View style={styles.header}>
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.username}>{event.organizer_username}</Text>
+          <Text style={styles.eventLabel}>created an event</Text>
+        </View>
+      </View>
+      
+      <Pressable 
+        onPress={() => router.push(`/event/${event.id}`)}
+        style={styles.eventCard}
+      >
+        <Text style={styles.eventName}>{event.name}</Text>
+        
+        {/* New Location for Group Name */}
+        {event.group_name && (
+            <Text style={styles.eventGroupText}>with {event.group_name}</Text>
+        )}
+
+        <Text style={styles.eventDate}>
+          {new Date(event.start_time).toLocaleDateString()} at {new Date(event.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+        </Text>
+        <Text numberOfLines={2} style={styles.eventDesc}>{event.description}</Text>
+        <View style={styles.eventFooter}>
+           <Ionicons name="location-outline" size={16} color="#5F7751" />
+           <Text style={styles.eventLocation}>{event.location || "Online"}</Text>
+           <Text style={styles.attendeesCount}>{event.attendees_count} attending</Text>
+        </View>
+      </Pressable>
+    </View>
+  );
+
+  const renderPost = (item: Post, index: number) => (
     <View style={styles.postContainer}>
-      {/* Header: User Info & Group Info */}
       <View style={styles.header}>
         <Pressable onPress={() => router.push(`/user/${item.author}`)}>
             {item.author_avatar ? (
@@ -123,12 +223,10 @@ export default function FeedScreen() {
         </View>
       </View>
 
-      {/* Post Image */}
       <Pressable onPress={() => router.push(`/post/${item.id}`)}>
         <Image source={{ uri: item.image }} style={styles.postImage} />
       </Pressable>
 
-      {/* Action Buttons */}
       <View style={styles.actionsRow}>
         <View style={styles.actionGroup}>
           <Pressable
@@ -157,10 +255,9 @@ export default function FeedScreen() {
         </View>
       </View>
 
-      {/* Caption */}
       <View style={styles.captionContainer}>
         <Text style={styles.captionText}>
-          <Text style={styles.username}>{item.author_username}</Text> {item.caption}
+          {item.caption}
         </Text>
       </View>
     </View>
@@ -169,9 +266,9 @@ export default function FeedScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <FlatList
-        data={posts}
+        data={feedItems}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => `${item.type}-${item.id}`}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#69324C" />
         }
@@ -180,7 +277,15 @@ export default function FeedScreen() {
         ListFooterComponent={
           (loading && !refreshing) ? <ActivityIndicator size="small" color="#69324C" style={{ margin: 20 }} /> : null
         }
-        contentContainerStyle={{ paddingBottom: 20 }}
+        ListEmptyComponent={
+            (!loading && feedItems.length === 0) ? (
+                <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyText}>Your feed is empty.</Text>
+                    <Text style={styles.emptySubText}>Join groups or follow users to see content here!</Text>
+                </View>
+            ) : null
+        }
+        contentContainerStyle={{ paddingBottom: 20, flexGrow: 1 }}
       />
     </SafeAreaView>
   );
@@ -194,6 +299,9 @@ const styles = StyleSheet.create({
   postContainer: {
     marginBottom: 24,
     backgroundColor: "#FAF7F0",
+  },
+  eventContainer: {
+    paddingHorizontal: 14,
   },
   header: {
     flexDirection: "row",
@@ -215,6 +323,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
     color: "#1E1E1E",
+  },
+  eventLabel: {
+    fontSize: 12,
+    color: "#666",
   },
   groupText: {
     fontSize: 12,
@@ -255,4 +367,68 @@ const styles = StyleSheet.create({
     color: "#1E1E1E",
     lineHeight: 18,
   },
+  // Event specific styles
+  eventCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E9E3D8",
+    gap: 6,
+  },
+  eventName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#69324C",
+  },
+  eventGroupText: {
+      fontSize: 14,
+      color: "#5F7751",
+      fontWeight: "bold",
+      marginBottom: 4,
+  },
+  eventDate: {
+    fontSize: 14,
+    color: "#5F7751",
+    fontWeight: "600",
+  },
+  eventDesc: {
+    fontSize: 14,
+    color: "#444",
+  },
+  eventFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 8,
+  },
+  eventLocation: {
+    fontSize: 12,
+    color: "#666",
+    marginRight: 10,
+  },
+  attendeesCount: {
+    fontSize: 12,
+    color: "#666",
+    fontWeight: '600',
+  },
+  // Empty State
+  emptyContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: 100,
+      paddingHorizontal: 20
+  },
+  emptyText: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: '#69324C',
+      marginBottom: 8
+  },
+  emptySubText: {
+      fontSize: 14,
+      color: '#666',
+      textAlign: 'center'
+  }
 });

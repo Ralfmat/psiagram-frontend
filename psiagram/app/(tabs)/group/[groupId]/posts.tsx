@@ -14,7 +14,10 @@ import {
   View,
 } from "react-native";
 
+// --- Interfaces ---
+
 interface Post {
+  type: "post";
   id: number;
   author: number;
   author_username: string;
@@ -27,19 +30,37 @@ interface Post {
   author_avatar: string | null;
 }
 
-export default function GroupPostsScreen() {
+interface Event {
+  type: "event";
+  id: number;
+  name: string;
+  description: string;
+  location: string | null;
+  start_time: string;
+  end_time: string;
+  organizer: number;
+  organizer_username: string;
+  attendees_count: number;
+  created_at: string;
+}
+
+type FeedItem = Post | Event;
+
+export default function GroupFeedScreen() {
   const { groupId } = useLocalSearchParams();
   const router = useRouter();
   
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [groupName, setGroupName] = useState<string>(""); // State for group name
+  
+  const [postsCursor, setPostsCursor] = useState<string | null>(null);
+  const [eventsCursor, setEventsCursor] = useState<string | null>(null);
+  const [groupName, setGroupName] = useState<string>("");
 
   useEffect(() => {
-    fetchGroupInfo(); // Fetch group name
-    fetchPosts();
+    fetchGroupInfo();
+    fetchFeed(true);
   }, [groupId]);
 
   const fetchGroupInfo = async () => {
@@ -52,20 +73,56 @@ export default function GroupPostsScreen() {
     }
   };
 
-  const fetchPosts = async (url?: string | null) => {
-    if (url === null) return;
-
+  const fetchFeed = async (reset = false) => {
     try {
-      const endpoint = url || `/api/posts/group/${groupId}/`;
+      const id = Array.isArray(groupId) ? groupId[0] : groupId;
       
-      const response = await client.get(endpoint);
-      const newPosts = response.data.results;
-      const nextLink = response.data.next;
+      const postsUrl = reset ? `/api/posts/group/${id}/` : postsCursor;
+      const eventsUrl = reset ? `/api/events/group/${id}/` : eventsCursor;
 
-      setPosts((prev) => (url ? [...prev, ...newPosts] : newPosts));
-      setNextCursor(nextLink);
+      if (!reset && !postsUrl && !eventsUrl) return;
+
+      const promises = [];
+      if (postsUrl) promises.push(client.get(postsUrl));
+      if (eventsUrl) promises.push(client.get(eventsUrl));
+
+      if (promises.length === 0) return;
+
+      const responses = await Promise.all(promises);
+
+      let newItems: FeedItem[] = [];
+      let nextPosts = reset ? null : postsCursor;
+      let nextEvents = reset ? null : eventsCursor;
+
+      let responseIndex = 0;
+      
+      if (postsUrl) {
+        const pRes = responses[responseIndex++];
+        const fetchedPosts = pRes.data.results.map((p: any) => ({ ...p, type: "post" }));
+        newItems = [...newItems, ...fetchedPosts];
+        nextPosts = pRes.data.next;
+      }
+      
+      if (eventsUrl) {
+        const eRes = responses[responseIndex++];
+        const fetchedEvents = eRes.data.results.map((e: any) => ({ ...e, type: "event" }));
+        newItems = [...newItems, ...fetchedEvents];
+        nextEvents = eRes.data.next;
+      }
+
+      setPostsCursor(nextPosts);
+      setEventsCursor(nextEvents);
+
+      setFeedItems((prev) => {
+        const combined = reset ? newItems : [...prev, ...newItems];
+        // Sort descending by created_at
+        return combined.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      });
+
     } catch (error) {
-      console.error("Group posts fetch error:", error);
+      console.error("Group feed fetch error:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -74,127 +131,160 @@ export default function GroupPostsScreen() {
 
   const handleRefresh = () => {
     setRefreshing(true);
-    setNextCursor(null);
-    fetchPosts();
+    setPostsCursor(null);
+    setEventsCursor(null);
     fetchGroupInfo();
+    fetchFeed(true);
   };
 
   const handleLoadMore = () => {
-    if (!loading && nextCursor) {
-      fetchPosts(nextCursor);
+    if (!loading) {
+      fetchFeed(false);
     }
   };
 
-  const toggleLike = async (postIndex: number) => {
-    const post = posts[postIndex];
-    const originalLiked = post.is_liked;
-    const originalCount = post.likes_count;
+  const toggleLike = async (itemIndex: number) => {
+    const item = feedItems[itemIndex];
+    if (item.type !== 'post') return;
 
-    // Optimistic Update
-    const updatedPosts = [...posts];
-    updatedPosts[postIndex] = {
-      ...post,
+    const originalLiked = item.is_liked;
+    const originalCount = item.likes_count;
+
+    const updatedItems = [...feedItems];
+    updatedItems[itemIndex] = {
+      ...item,
       is_liked: !originalLiked,
       likes_count: originalLiked ? originalCount - 1 : originalCount + 1,
-    };
-    setPosts(updatedPosts);
+    } as Post;
+    setFeedItems(updatedItems);
 
     try {
-      await client.post(`api/posts/${post.id}/like/`);
+      await client.post(`api/posts/${item.id}/like/`);
     } catch (error) {
       console.error("Like failed", error);
-      // Revert if API fails
-      const revertedPosts = [...posts];
-      revertedPosts[postIndex] = {
-        ...post,
+      const revertedItems = [...feedItems];
+      revertedItems[itemIndex] = {
+        ...item,
         is_liked: originalLiked,
         likes_count: originalCount,
-      };
-      setPosts(revertedPosts);
+      } as Post;
+      setFeedItems(revertedItems);
     }
   };
 
-  const renderItem = ({ item, index }: { item: Post; index: number }) => (
-    <View style={styles.postContainer}>
-      {/* Header: User Info */}
-      <View style={styles.postHeader}>
-        <Pressable
-          style={styles.userRow}
-          onPress={() => router.push(`/user/${item.author}`)}
-        >
-          {item.author_avatar ? (
-            <Image source={{ uri: item.author_avatar }} style={styles.userAvatar} />
-          ) : (
-            <View style={styles.userAvatar} />
-          )}
-          <Text style={styles.username}>{item.author_username}</Text>
+  const renderItem = ({ item, index }: { item: FeedItem; index: number }) => {
+    if (item.type === 'event') {
+      return (
+        <View style={[styles.postContainer, styles.eventContainer]}>
+          {/* Updated Header */}
+          <View style={styles.postHeader}>
+            <View>
+              <Text style={styles.username}>{item.organizer_username}</Text>
+              <Text style={styles.eventLabel}>created an event</Text>
+            </View>
+          </View>
+          
+          <Pressable 
+            onPress={() => router.push(`/event/${item.id}`)}
+            style={styles.eventCard}
+          >
+            <Text style={styles.eventName}>{item.name}</Text>
+            
+            {/* Added Group Name in Card */}
+            <Text style={styles.eventGroupText}>with {groupName}</Text>
+
+            <Text style={styles.eventDate}>
+              {new Date(item.start_time).toLocaleDateString()} at {new Date(item.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+            </Text>
+            <Text numberOfLines={2} style={styles.eventDesc}>{item.description}</Text>
+            <View style={styles.eventFooter}>
+               <Ionicons name="location-outline" size={16} color="#5F7751" />
+               <Text style={styles.eventLocation}>{item.location || "Online"}</Text>
+               <Text style={styles.attendeesCount}>{item.attendees_count} attending</Text>
+            </View>
+          </Pressable>
+        </View>
+      );
+    }
+
+    // Render Post
+    const post = item as Post;
+    return (
+      <View style={styles.postContainer}>
+        <View style={styles.postHeader}>
+          <Pressable
+            style={styles.userRow}
+            onPress={() => router.push(`/user/${post.author}`)}
+          >
+            {post.author_avatar ? (
+              <Image source={{ uri: post.author_avatar }} style={styles.userAvatar} />
+            ) : (
+              <View style={styles.userAvatar} />
+            )}
+            <Text style={styles.username}>{post.author_username}</Text>
+          </Pressable>
+        </View>
+
+        <Pressable onPress={() => router.push(`/post/${post.id}`)}>
+          <Image source={{ uri: post.image }} style={styles.postImage} />
         </Pressable>
-      </View>
 
-      {/* Post Image */}
-      <Pressable onPress={() => router.push(`/post/${item.id}`)}>
-        <Image source={{ uri: item.image }} style={styles.postImage} />
-      </Pressable>
+        <View style={styles.actionsRow}>
+          <View style={styles.actionGroup}>
+            <Pressable
+              onPress={() => toggleLike(index)}
+              style={styles.iconBtn}
+              hitSlop={10}
+            >
+              <Ionicons
+                name={post.is_liked ? "paw" : "paw-outline"}
+                size={28}
+                color="#69324C"
+              />
+            </Pressable>
+            <Text style={styles.countText}>{post.likes_count}</Text>
+          </View>
 
-      {/* Action Buttons */}
-      <View style={styles.actionsRow}>
-        <View style={styles.actionGroup}>
-          <Pressable
-            onPress={() => toggleLike(index)}
-            style={styles.iconBtn}
-            hitSlop={10}
-          >
-            <Ionicons
-              name={item.is_liked ? "paw" : "paw-outline"}
-              size={28}
-              color="#69324C"
-            />
-          </Pressable>
-          <Text style={styles.countText}>{item.likes_count}</Text>
+          <View style={styles.actionGroup}>
+            <Pressable
+              onPress={() => router.push(`/post/${post.id}`)}
+              style={styles.iconBtn}
+              hitSlop={10}
+            >
+              <Ionicons name="chatbubble-outline" size={28} color="#69324C" />
+            </Pressable>
+            <Text style={styles.countText}>{post.comments_count}</Text>
+          </View>
         </View>
 
-        <View style={styles.actionGroup}>
-          <Pressable
-            onPress={() => router.push(`/post/${item.id}`)}
-            style={styles.iconBtn}
-            hitSlop={10}
-          >
-            <Ionicons name="chatbubble-outline" size={28} color="#69324C" />
-          </Pressable>
-          <Text style={styles.countText}>{item.comments_count}</Text>
+        <View style={styles.captionContainer}>
+          <Text style={styles.captionText}>
+            {post.caption}
+          </Text>
         </View>
       </View>
-
-      {/* Caption */}
-      <View style={styles.captionContainer}>
-        <Text style={styles.captionText}>
-          <Text style={styles.username}>{item.author_username}</Text> {item.caption}
-        </Text>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.screen}>
-      {/* Group Navigation Header */}
+      {/* Header */}
       <View style={styles.topHeader}>
         <Pressable onPress={() => router.back()} hitSlop={10}>
           <Ionicons name="arrow-back" size={24} color="#1E1E1E" />
         </Pressable>
-        {/* UPDATED HEADER TITLE */}
         <Text style={styles.headerTitle}>
-            {groupName ? `${groupName} Feed` : "Group Feed"}
+            {groupName ? `${groupName}` : "Group Feed"}
         </Text>
         <Pressable onPress={() => router.push(`/(tabs)/group/${groupId}/info`)} hitSlop={10}>
           <Ionicons name="information-circle-outline" size={26} color="#1E1E1E" />
         </Pressable>
       </View>
 
-      {/* Posts List */}
       <FlatList
-        data={posts}
+        data={feedItems}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => `${item.type}-${item.id}`}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#69324C" />
         }
@@ -206,7 +296,7 @@ export default function GroupPostsScreen() {
         ListEmptyComponent={
           !loading ? (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No posts yet. Be the first to share!</Text>
+              <Text style={styles.emptyText}>Nothing here yet.</Text>
             </View>
           ) : null
         }
@@ -221,7 +311,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#FAF7F0",
   },
-  // Top Header specific to Group view
   topHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -237,11 +326,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#1E1E1E",
   },
-  
-  // Post Styles (Matching Feed.tsx)
   postContainer: {
     marginBottom: 24,
     backgroundColor: "#FAF7F0",
+  },
+  eventContainer: {
+    paddingHorizontal: 14,
   },
   postHeader: {
     flexDirection: "row",
@@ -264,6 +354,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
     color: "#1E1E1E",
+  },
+  eventLabel: {
+    fontSize: 12,
+    color: "#666",
   },
   postImage: {
     width: "100%",
@@ -307,4 +401,49 @@ const styles = StyleSheet.create({
     color: "#888",
     fontStyle: "italic",
   },
+  // Event Styles
+  eventCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E9E3D8",
+    gap: 6,
+  },
+  eventName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#69324C",
+  },
+  eventGroupText: {
+      fontSize: 14,
+      color: "#5F7751",
+      fontWeight: "bold",
+      marginBottom: 4,
+  },
+  eventDate: {
+    fontSize: 14,
+    color: "#5F7751",
+    fontWeight: "600",
+  },
+  eventDesc: {
+    fontSize: 14,
+    color: "#444",
+  },
+  eventFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 8,
+  },
+  eventLocation: {
+    fontSize: 12,
+    color: "#666",
+    marginRight: 10,
+  },
+  attendeesCount: {
+    fontSize: 12,
+    color: "#666",
+    fontWeight: '600',
+  }
 });
