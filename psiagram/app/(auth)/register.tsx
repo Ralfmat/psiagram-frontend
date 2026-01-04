@@ -116,7 +116,7 @@ export default function RegisterScreen() {
               <Ionicons name="person-outline" size={18} color="#555" />
               <TextInput
                 style={styles.input}
-                value={email}
+                value={username}
                 onChangeText={setUsername}
                 placeholder="username"
                 placeholderTextColor="#555"
