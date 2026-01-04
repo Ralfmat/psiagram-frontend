@@ -1,7 +1,7 @@
 import client from "@/api/client";
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -30,62 +30,28 @@ interface EventDetail {
 }
 
 export default function EventScreen() {
-  // Use 'id' or 'eventId' depending on your file name ([id].tsx vs [eventId].tsx).
-  // Based on your previous code, it seems you might be using [id].tsx, so we check both.
-  const params = useLocalSearchParams();
-  const eventId = params.id || params.eventId;
-  
-  const router = useRouter();
-  const { session } = useSession();
-
-  const [event, setEvent] = useState<EventDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [joining, setJoining] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
-
-  useEffect(() => {
-    // 1. Try to get ID from session (fastest)
-    if (session) {
-      try {
-        const parsed = JSON.parse(session);
-        // dj-rest-auth might return 'pk' or 'id' depending on configuration
-        const uid = parsed?.user?.id || parsed?.user?.pk;
-        if (uid) {
-          setCurrentUserId(Number(uid));
+  // Fetch Event Data (useFocusEffect ensures data refreshes when coming back from Edit page)
+  useFocusEffect(
+    useCallback(() => {
+      if (!eventId) return;
+      
+      const fetchEventDetails = async () => {
+        try {
+          // If we are refreshing, we might not want to show full loading spinner every time, 
+          // but for now strict loading state ensures fresh data display.
+          const response = await client.get(`/api/events/${eventId}/`);
+          setEvent(response.data);
+        } catch (error) {
+          console.error("Fetch event error:", error);
+          Alert.alert("Error", "Could not load event details.");
+        } finally {
+          setLoading(false);
         }
-      } catch (e) {
-        console.error("Failed to parse session", e);
-      }
-    }
+      };
 
-    // 2. Fetch from API to be reliable (in case session is stale or missing user data)
-    client.get('/users/me/')
-      .then(response => {
-        if (response.data && response.data.id) {
-          setCurrentUserId(response.data.id);
-        }
-      })
-      .catch(err => {
-        // Silent fail or debug log, relying on session if API fails
-        console.log("Could not fetch user details", err);
-      });
-
-    if (eventId) {
       fetchEventDetails();
-    }
-  }, [eventId, session]);
-
-  const fetchEventDetails = async () => {
-    try {
-      const response = await client.get(`/api/events/${eventId}/`);
-      setEvent(response.data);
-    } catch (error) {
-      console.error("Fetch event error:", error);
-      Alert.alert("Error", "Could not load event details.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    }, [eventId])
+  );
 
   const handleJoinLeave = async () => {
     if (!event) return;
@@ -107,33 +73,6 @@ export default function EventScreen() {
       setJoining(false);
     }
   };
-
-  const handleDelete = () => {
-    Alert.alert(
-      "Delete Event",
-      "Are you sure you want to delete this event? This action cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await client.delete(`/api/events/${eventId}/`);
-              Alert.alert("Deleted", "Event has been deleted.");
-              router.back();
-            } catch (error) {
-              console.error("Delete failed", error);
-              Alert.alert("Error", "Failed to delete event.");
-            }
-          }
-        }
-      ]
-    );
-  };
-
-  // Ensure strict comparison works by converting to Number if necessary
-  const isOrganizer = event && currentUserId && Number(event.organizer) === Number(currentUserId);
 
   if (loading) {
     return (
@@ -163,13 +102,12 @@ export default function EventScreen() {
         </Pressable>
         <Text style={styles.headerTitle}>Event Details</Text>
         
-        {/* Edit/Delete Actions for Organizer */}
+        {/* Only Organizer sees the Edit button */}
         {isOrganizer ? (
            <View style={styles.headerActions}>
-             <Pressable onPress={() => router.push(`/event/${eventId}/edit`)} hitSlop={10}>
-               <Ionicons name="pencil" size={22} color="#1E1E1E" />
+             <Pressable onPress={() => router.push(`/event/edit/${eventId}`)} hitSlop={10}>
+               <Ionicons name="pencil" size={24} color="#69324C" />
              </Pressable>
-             
            </View>
         ) : (
            <View style={{ width: 24 }} /> 
@@ -186,7 +124,6 @@ export default function EventScreen() {
             
             <Text style={styles.title}>{event.name}</Text>
             
-            {/* Host Section - No Avatar */}
             <View style={styles.organizerRow}>
                 <Text style={styles.label}>Hosted by </Text>
                 <Pressable onPress={() => router.push(`/user/${event.organizer}`)}>
@@ -231,7 +168,7 @@ export default function EventScreen() {
                 <Text style={styles.attendeesText}>{event.attendees_count} people attending</Text>
             </View>
 
-            {/* Join Button */}
+            {/* Join/Leave Button */}
             <Pressable 
                 style={[styles.joinBtn, event.is_attending && styles.leaveBtn]} 
                 onPress={handleJoinLeave}
