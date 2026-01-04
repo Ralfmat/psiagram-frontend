@@ -38,7 +38,7 @@ export default function TabsLayout() {
     // Optimistically remove the red dot immediately
     setHasUnread(false);
     setReturnTo(pathname as Href);
-    router.push("/(tabs)/notifications");
+    router.push("/notifications");
   };
 
   const closeNotifications = () => {

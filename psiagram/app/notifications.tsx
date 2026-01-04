@@ -26,7 +26,6 @@ interface Notification {
   created_at: string;
 }
 
-// Simple utility to format time
 function timeAgo(dateString: string) {
   const now = new Date();
   const past = new Date(dateString);
@@ -136,7 +135,15 @@ export default function NotificationsScreen() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <Text style={styles.header}>Notifications</Text>
+      <View style={styles.headerBar}>
+        <Pressable style={styles.backRow} onPress={() => router.back()}>
+          <Ionicons name="chevron-back" size={30} color="#69324C" />
+          <Text style={styles.backText}>back</Text>
+        </Pressable>
+      </View>
+
+      <Text style={styles.pageTitle}>Notifications</Text>
+      
       <FlatList
         data={notifications}
         keyExtractor={(item) => item.id.toString()}
@@ -153,16 +160,26 @@ export default function NotificationsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#FAF7F0" },
-  header: { fontSize: 24, fontWeight: "bold", padding: 20, color: "#69324C" },
+  
+  headerBar: { 
+    height: 56, 
+    paddingHorizontal: 14, 
+    flexDirection: "row", 
+    alignItems: "center", 
+    backgroundColor: "#FAF7F0" 
+  },
+  backRow: { flexDirection: "row", alignItems: "center", width: 60 },
+  backText: { color: "#69324C", fontSize: 14, fontWeight: "700", textTransform: "lowercase" },
+
+  pageTitle: { fontSize: 24, fontWeight: "bold", paddingHorizontal: 20, paddingBottom: 10, color: "#69324C" },
+
   row: {
     flexDirection: "row",
     alignItems: "center",
     padding: 14,
-    // borderBottomWidth: 1,
-    // borderBottomColor: "#eee",
   },
   unreadRow: {
-    backgroundColor: "#F2EBE0", // Slightly darker background for unread items
+    backgroundColor: "#F2EBE0", 
   },
   avatarContainer: { marginRight: 12 },
   avatar: { width: 44, height: 44, borderRadius: 22 },
@@ -170,7 +187,7 @@ const styles = StyleSheet.create({
   textLine: { fontSize: 14, color: "#1E1E1E", lineHeight: 20 },
   username: { fontWeight: "bold" },
   message: { color: "#1E1E1E" },
-  timeText: { color: "#888", fontSize: 12 }, // Gray color for time
+  timeText: { color: "#888", fontSize: 12 }, 
   postThumb: { width: 44, height: 44, borderRadius: 4 },
   emptyText: { textAlign: 'center', marginTop: 40, color: '#999' }
 });

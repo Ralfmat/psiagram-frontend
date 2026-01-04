@@ -23,6 +23,57 @@ interface Member {
   is_following: boolean;
 }
 
+// Sub-component to handle individual member avatar fetching
+const MemberItem = ({ 
+  item, 
+  currentUserId, 
+  router 
+}: { 
+  item: Member, 
+  currentUserId: number | null, 
+  router: any 
+}) => {
+  const [avatar, setAvatar] = useState<string | null>(item.avatar);
+
+  useEffect(() => {
+    // If avatar is missing from the group list, fetch the profile to get it
+    if (!avatar) {
+      client.get(`api/profiles/${item.id}/`)
+        .then(res => {
+          if (res.data?.avatar) {
+            setAvatar(res.data.avatar);
+          }
+        })
+        .catch(e => console.log(`Failed to fetch avatar for ${item.username}`, e));
+    }
+  }, [item.id]);
+
+  const isMe = item.id === currentUserId;
+
+  return (
+    <TouchableOpacity 
+      style={styles.memberRow} 
+      onPress={() => router.push(`/user/${item.id}`)}
+    >
+      <View style={styles.memberInfo}>
+        {avatar ? (
+          <Image source={{ uri: avatar }} style={styles.avatar} />
+        ) : (
+          <View style={styles.avatarPlaceholder} />
+        )}
+        <View>
+          <Text style={styles.memberName}>
+            {item.username} 
+            {item.is_admin && <Text style={styles.adminBadge}> (Admin)</Text>}
+            {isMe && <Text style={styles.meBadge}> (You)</Text>}
+            {!isMe && item.is_following && <Text style={styles.meBadge}> (Following)</Text>}
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
 export default function GroupMembersScreen() {
   const { groupId } = useLocalSearchParams();
   const router = useRouter();
@@ -49,7 +100,6 @@ export default function GroupMembersScreen() {
   const fetchGroupMembers = async () => {
     try {
       const res = await client.get(`/api/groups/${id}/`);
-      // Fallback to empty array if members_details is undefined
       setMembers(res.data.members_details || []);
     } catch (e) {
       console.error(e);
@@ -64,41 +114,6 @@ export default function GroupMembersScreen() {
     m.username.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const renderMember = ({ item }: { item: Member }) => {
-    const isMe = item.id === currentUserId;
-
-    return (
-      <TouchableOpacity 
-        style={styles.memberRow} 
-        onPress={() => router.push(`/user/${item.id}`)}
-      >
-        <View style={styles.memberInfo}>
-          {item.avatar ? (
-            <Image source={{ uri: item.avatar }} style={styles.avatar} />
-          ) : (
-            <View style={styles.avatarPlaceholder} />
-          )}
-          <View>
-            <Text style={styles.memberName}>
-              {item.username} 
-              {item.is_admin && <Text style={styles.adminBadge}> (Admin)</Text>}
-              {isMe && <Text style={styles.meBadge}> (You)</Text>}
-              {!isMe && item.is_following && <Text style={styles.meBadge}> (Following)</Text>}
-            </Text>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#69324C" />
-      </View>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.header}>
@@ -110,7 +125,6 @@ export default function GroupMembersScreen() {
       </View>
 
       <View style={styles.container}>
-        {/* Search Bar matching EditGroup style */}
         <View style={styles.searchBox}>
           <Ionicons name="search" size={20} color="#999" />
           <TextInput
@@ -124,7 +138,13 @@ export default function GroupMembersScreen() {
         <FlatList
           data={filteredMembers}
           keyExtractor={(item) => item.id.toString()}
-          renderItem={renderMember}
+          renderItem={({ item }) => (
+            <MemberItem 
+              item={item} 
+              currentUserId={currentUserId} 
+              router={router} 
+            />
+          )}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <Text style={styles.emptyText}>No members found.</Text>
@@ -147,13 +167,12 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderBottomWidth: 1,
     borderColor: "#E0E0E0",
-    backgroundColor: "#FAF7F0" // Matched screen background
+    backgroundColor: "#FAF7F0" 
   },
   headerTitle: { fontSize: 18, fontWeight: "bold", color: "#1E1E1E" },
   
   container: { flex: 1, padding: 20 },
 
-  // Updated Search Box to match EditGroup
   searchBox: { 
     flexDirection: 'row', 
     alignItems: 'center', 
@@ -168,7 +187,6 @@ const styles = StyleSheet.create({
   
   listContent: { paddingBottom: 20 },
 
-  // Updated Member Row to match EditGroup
   memberRow: { 
     flexDirection: "row", 
     alignItems: "center", 
@@ -193,7 +211,6 @@ const styles = StyleSheet.create({
   
   memberName: { fontSize: 14, fontWeight: "600", color: "#1E1E1E" },
   
-  // Badges
   adminBadge: { color: "#69324C", fontWeight: "bold", fontSize: 12 },
   meBadge: { color: "#999", fontStyle: "italic", fontSize: 12 },
 

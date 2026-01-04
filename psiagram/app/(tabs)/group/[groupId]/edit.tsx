@@ -27,15 +27,85 @@ interface GroupDetails {
   name: string;
   description: string;
   members_details: User[];
-  admins: number[]; // List of Admin IDs
+  admins: number[];
   is_admin: boolean;
 }
+
+// Sub-component for rendering member row with avatar fetch logic
+const MemberRow = ({ 
+  member, 
+  isAdmin, 
+  isCurrentUser, 
+  onPromote, 
+  onKick 
+}: {
+  member: User,
+  isAdmin: boolean,
+  isCurrentUser: boolean,
+  onPromote: () => void,
+  onKick: () => void
+}) => {
+  const [avatar, setAvatar] = useState<string | null>(member.avatar);
+
+  useEffect(() => {
+    // Fetch profile avatar if missing
+    if (!avatar) {
+      client.get(`api/profiles/${member.id}/`)
+        .then(res => {
+          if (res.data?.avatar) {
+            setAvatar(res.data.avatar);
+          }
+        })
+        .catch(e => console.log(`Avatar fetch error for ${member.username}`, e));
+    }
+  }, [member.id]);
+
+  return (
+    <View style={styles.memberRow}>
+      <View style={styles.memberInfo}>
+        {avatar ? (
+          <Image source={{ uri: avatar }} style={styles.avatar} />
+        ) : (
+          <View style={styles.avatarPlaceholder} />
+        )}
+        <View>
+          <Text style={styles.memberName}>
+            {member.username} 
+            {isAdmin && <Text style={styles.adminBadge}> (Admin)</Text>}
+            {isCurrentUser && <Text style={styles.meBadge}> (You)</Text>}
+          </Text>
+        </View>
+      </View>
+  
+      {!isCurrentUser && (
+        <View style={styles.rowActions}>
+          <TouchableOpacity 
+            style={[styles.actionBtn, styles.roleBtn]}
+            onPress={onPromote}
+          >
+            <Ionicons 
+              name={isAdmin ? "arrow-down-circle-outline" : "arrow-up-circle-outline"} 
+              size={20} 
+              color="#5F7751" 
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.actionBtn, styles.kickBtn]}
+            onPress={onKick}
+          >
+            <Ionicons name="trash-outline" size={20} color="#cc0000" />
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+};
 
 export default function EditGroupScreen() {
   const { groupId } = useLocalSearchParams();
   const router = useRouter();
   
-  // Ensure groupId is a string
   const id = Array.isArray(groupId) ? groupId[0] : groupId;
 
   const [group, setGroup] = useState<GroupDetails | null>(null);
@@ -50,14 +120,12 @@ export default function EditGroupScreen() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    // 1. Fetch Current User ID
     client.get("/users/me/")
       .then(res => {
         setCurrentUserId(res.data.id);
       })
       .catch(e => console.error("Failed to fetch current user:", e));
 
-    // 2. Fetch Group Details
     if (id) fetchGroup();
   }, [id]);
 
@@ -118,7 +186,7 @@ export default function EditGroupScreen() {
         user_id: userId,
         action: action
       });
-      fetchGroup(); // Refresh list
+      fetchGroup(); 
     } catch (e) {
       Alert.alert("Error", `Failed to ${action} member.`);
     }
@@ -151,7 +219,6 @@ export default function EditGroupScreen() {
 
   if (!group) return null;
 
-  // Filter members
   const filteredMembers = group.members_details?.filter(m => 
     m.username.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
@@ -199,45 +266,14 @@ export default function EditGroupScreen() {
             const isCurrentUser = member.id === currentUserId;
 
             return (
-                <View key={member.id} style={styles.memberRow}>
-                    <View style={styles.memberInfo}>
-                        {member.avatar ? (
-                            <Image source={{ uri: member.avatar }} style={styles.avatar} />
-                        ) : (
-                            <View style={styles.avatarPlaceholder} />
-                        )}
-                        <View>
-                            <Text style={styles.memberName}>
-                                {member.username} 
-                                {isAdmin && <Text style={styles.adminBadge}> (Admin)</Text>}
-                                {isCurrentUser && <Text style={styles.meBadge}> (You)</Text>}
-                            </Text>
-                        </View>
-                    </View>
-                
-                    {/* HIDE ACTIONS FOR CURRENT USER */}
-                    {!isCurrentUser && (
-                        <View style={styles.rowActions}>
-                            <TouchableOpacity 
-                                style={[styles.actionBtn, styles.roleBtn]}
-                                onPress={() => confirmAction(member.id, member.username, isAdmin ? 'demote' : 'promote')}
-                            >
-                                <Ionicons 
-                                    name={isAdmin ? "arrow-down-circle-outline" : "arrow-up-circle-outline"} 
-                                    size={20} 
-                                    color="#5F7751" 
-                                />
-                            </TouchableOpacity>
-
-                            <TouchableOpacity 
-                                style={[styles.actionBtn, styles.kickBtn]}
-                                onPress={() => confirmAction(member.id, member.username, 'kick')}
-                            >
-                                <Ionicons name="trash-outline" size={20} color="#cc0000" />
-                            </TouchableOpacity>
-                        </View>
-                    )}
-                </View>
+              <MemberRow 
+                key={member.id}
+                member={member}
+                isAdmin={isAdmin}
+                isCurrentUser={isCurrentUser}
+                onPromote={() => confirmAction(member.id, member.username, isAdmin ? 'demote' : 'promote')}
+                onKick={() => confirmAction(member.id, member.username, 'kick')}
+              />
             );
           })}
           
