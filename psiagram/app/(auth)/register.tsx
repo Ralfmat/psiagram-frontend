@@ -19,6 +19,7 @@ import {
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -47,6 +48,7 @@ export default function RegisterScreen() {
     try {
       const payload = {
         email,
+        username,
         first_name: firstName,
         last_name: lastName,
         password1: password,
@@ -103,6 +105,21 @@ export default function RegisterScreen() {
                 placeholder="email"
                 placeholderTextColor="#555"
                 keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+          </View>
+
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>username</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="mail-outline" size={18} color="#555" />
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={setUsername}
+                placeholder="username"
+                placeholderTextColor="#555"
                 autoCapitalize="none"
               />
             </View>
