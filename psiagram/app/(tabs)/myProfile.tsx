@@ -224,7 +224,7 @@ export default function MyProfile() {
   const bioLines = profileData?.bio ? profileData.bio.split("\n") : [];
 
   const Header = (
-    <View>
+    <View style={styles.headerContainer}>
       <View style={styles.profileCard}>
         <View style={styles.profileTopRow}>
           <Pressable onPress={() => setAvatarVisible(true)}>
@@ -265,7 +265,7 @@ export default function MyProfile() {
           ))}
         </View>
       </View>
-      <View style={{ height: 10 }} />
+  
     </View>
   );
 
@@ -275,7 +275,8 @@ export default function MyProfile() {
         data={userPosts}
         keyExtractor={(item) => String(item.id)}
         numColumns={NUM_COLS}
-        columnWrapperStyle={{ gap: GAP }}
+        columnWrapperStyle={{ gap: GAP, paddingHorizontal: H_PADDING  }}
+        style={{ backgroundColor: "#0B380C" }}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={Header}
         ItemSeparatorComponent={() => <View style={{ height: GAP }} />}
@@ -387,26 +388,27 @@ function Stat({ value, label }: { value: number; label: string }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#FAF7F0" },
-  listContent: { paddingHorizontal: H_PADDING, paddingTop: 10, paddingBottom: 50 },
-  profileCard: { backgroundColor: "#FAF7F0", padding: 12 },
+  listContent: {  paddingBottom: 50},
+  headerContainer: { backgroundColor: "#FAF7F0", marginBottom: 10 },
+  profileCard: { backgroundColor: "#FAF7F0", paddingHorizontal: H_PADDING, padding: 12 },
   profileTopRow: { flexDirection: "row", gap: 10 },
   avatar: { width: 120, height: 120, borderRadius: 80, borderColor: "#69324C", borderWidth: 1 },
   rightCol: { flex: 1 },
   username: { fontSize: 17, fontWeight: "bold", color: "#1E1E1E", marginBottom: 10 },
-  statsRow: { flexDirection: "row", marginRight: 20, alignSelf: "center" },
-  stat: { width: 70, textAlign: "center", marginRight: 10 },
+  statsRow: { flexDirection: "row",justifyContent: "space-between", marginBottom: 12, paddingRight:5 },
+  stat: { alignItems: "center", flex: 10 },
   statValue: { fontSize: 20, fontWeight: "bold", color: "#1E1E1E", textAlign: "center" },
   statLabel: { fontSize: 13, color: "#3B3B3B", textAlign: "center" },
   line: { height: 1, backgroundColor: "#69324C", marginVertical: 6 },
   buttonsRow: { flexDirection: "row", gap: 20, marginTop: 12 },
-  btnPrimary: { backgroundColor: "#E9E3D8", borderRadius: 10, paddingVertical: 8, paddingHorizontal: 10 },
-  btnPrimaryText: { color: "#1E1E1E", fontSize: 12, fontWeight: "bold", textTransform: "lowercase" },
-  btnSecondary: { backgroundColor: "#E9E3D8", borderRadius: 10, paddingVertical: 8, paddingHorizontal: 10 },
-  btnSecondaryText: { color: "#1E1E1E", fontSize: 12, fontWeight: "700", textTransform: "lowercase" },
+  btnPrimary: { backgroundColor: "#69324C", borderRadius: 10, paddingVertical: 8, paddingHorizontal: 10 },
+  btnPrimaryText: { color: "#FAF7F0", fontSize: 12, fontWeight: "bold", textTransform: "lowercase" },
+  btnSecondary: { backgroundColor: "#69324C", borderRadius: 10, paddingVertical: 8, paddingHorizontal: 10 },
+  btnSecondaryText: { color: "#FAF7F0", fontSize: 12, fontWeight: "700", textTransform: "lowercase" },
   bioBox: { marginTop: 10, borderTopColor: "#C9BEB1", paddingTop: 10 },
   name: { fontSize: 15, fontWeight: "900", color: "#1E1E1E", marginBottom: 4 },
   bioLine: { fontSize: 14, color: "#1E1E1E", lineHeight: 16 },
-  tile: { width: TILE, height: TILE, borderRadius: 6, overflow: "hidden", backgroundColor: "#173F1A" },
+  tile: { width: TILE, height: TILE, borderRadius: 6, overflow: "hidden", backgroundColor: "#0B380C" },
   tileImage: { width: "100%", height: "100%" },
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", padding: 10 },
   popoutCard: { backgroundColor: "#FAF7F0", borderRadius: 12, padding: 12 },
