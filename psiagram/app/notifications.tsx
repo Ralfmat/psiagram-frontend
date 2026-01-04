@@ -49,11 +49,11 @@ export default function NotificationsScreen() {
 
   const fetchNotifications = async () => {
     try {
-      const res = await client.get("api/notifications/");
+      const res = await client.get("/api/notifications/");
       setNotifications(res.data.results || res.data);
       
       // Mark as read immediately after fetching
-      await client.post("api/notifications/mark-read/");
+      await client.post("/api/notifications/mark-read/");
     } catch (e) {
       console.error(e);
     } finally {

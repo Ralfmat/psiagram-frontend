@@ -65,7 +65,7 @@ async function publishPost(payload: {
   groupId: string | null;
 }) {
   if (payload.s3_key) {
-    const response = await client.post("api/posts/create/", {
+    const response = await client.post("/api/posts/create/", {
       caption: payload.caption,
       s3_key: payload.s3_key,
       group: payload.groupId,
@@ -83,7 +83,7 @@ async function createEvent(payload: {
   end_time: string;
   groupId: string | null;
 }) {
-  const response = await client.post("api/events/create/", {
+  const response = await client.post("/api/events/create/", {
     name: payload.name,
     description: payload.description,
     location: payload.location,

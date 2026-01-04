@@ -52,8 +52,8 @@ export default function PostDetails() {
     try {
       setLoading(true);
       const [postRes, meRes] = await Promise.all([
-        client.get(`api/posts/${postId}/`),
-        client.get("users/me/")
+        client.get(`/api/posts/${postId}/`),
+        client.get("/users/me/")
       ]);
       setPost(postRes.data);
       setCurrentUserId(meRes.data.id);
@@ -72,7 +72,7 @@ export default function PostDetails() {
       const previousCount = likesCount;
       setLiked(!previousLiked);
       setLikesCount(previousLiked ? previousCount - 1 : previousCount + 1);
-      const res = await client.post(`api/posts/${postId}/like/`);
+      const res = await client.post(`/api/posts/${postId}/like/`);
       if (res.data.likes_count !== undefined) {
          setLikesCount(res.data.likes_count);
          setLiked(res.data.status === 'liked');
@@ -93,7 +93,7 @@ export default function PostDetails() {
 
   const performDelete = async () => {
     try {
-      await client.delete(`api/posts/${postId}/`);
+      await client.delete(`/api/posts/${postId}/`);
       router.back();
     } catch (error) { Alert.alert("Error", "Failed to delete post."); }
   };
@@ -102,7 +102,7 @@ export default function PostDetails() {
     if (!commentText.trim()) return;
     try {
       setSubmittingComment(true);
-      const res = await client.post(`api/posts/${postId}/comment/`, { content: commentText, post: postId });
+      const res = await client.post(`/api/posts/${postId}/comment/`, { content: commentText, post: postId });
       setPost((prev: any) => ({ ...prev, comments: [...(prev.comments || []), res.data] }));
       setCommentText("");
     } catch (e) { Alert.alert("Error", "Could not post comment."); } 

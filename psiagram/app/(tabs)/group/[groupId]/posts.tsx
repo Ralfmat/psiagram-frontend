@@ -160,7 +160,7 @@ export default function GroupFeedScreen() {
     setFeedItems(updatedItems);
 
     try {
-      await client.post(`api/posts/${item.id}/like/`);
+      await client.post(`/api/posts/${item.id}/like/`);
     } catch (error) {
       console.error("Like failed", error);
       const revertedItems = [...feedItems];

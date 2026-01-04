@@ -66,8 +66,8 @@ export default function FeedScreen() {
 
   const fetchFeed = async (reset = false) => {
     try {
-      const postsUrl = reset ? "api/posts/feed/" : postsCursor;
-      const eventsUrl = reset ? "api/events/feed/" : eventsCursor;
+      const postsUrl = reset ? "/api/posts/feed/" : postsCursor;
+      const eventsUrl = reset ? "/api/events/feed/" : eventsCursor;
 
       if (!reset && !postsUrl && !eventsUrl) return;
 
@@ -146,7 +146,7 @@ export default function FeedScreen() {
     setFeedItems(updatedItems);
 
     try {
-      await client.post(`api/posts/${item.id}/like/`);
+      await client.post(`/api/posts/${item.id}/like/`);
     } catch (error) {
       console.error("Like failed", error);
       const revertedItems = [...feedItems];

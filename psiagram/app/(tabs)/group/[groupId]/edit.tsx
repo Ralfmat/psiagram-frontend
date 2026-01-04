@@ -50,7 +50,7 @@ const MemberRow = ({
   useEffect(() => {
     // Fetch profile avatar if missing
     if (!avatar) {
-      client.get(`api/profiles/${member.id}/`)
+      client.get(`/api/profiles/${member.id}/`)
         .then(res => {
           if (res.data?.avatar) {
             setAvatar(res.data.avatar);

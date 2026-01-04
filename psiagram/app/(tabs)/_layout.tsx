@@ -23,7 +23,7 @@ export default function TabsLayout() {
             return;
           }
           
-          const res = await client.get("api/notifications/unread-count/");
+          const res = await client.get("/api/notifications/unread-count/");
           setHasUnread(res.data.count > 0);
         } catch (e) {
           console.log("Failed to fetch notification count");

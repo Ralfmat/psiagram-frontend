@@ -99,18 +99,18 @@ export default function MyProfile() {
       // 1. Get current user ID if we don't have it
       let currentId = userId;
       if (!currentId) {
-        const meRes = await client.get("users/me/");
+        const meRes = await client.get("/users/me/");
         currentId = meRes.data.id;
         setUserId(currentId);
       }
 
       if (currentId) {
         // 2. Fetch Profile Details
-        const profileRes = await client.get(`api/profiles/${currentId}/`);
+        const profileRes = await client.get(`/api/profiles/${currentId}/`);
         setProfileData(profileRes.data);
 
         // 3. Fetch User Posts
-        const postsRes = await client.get(`api/posts/user/${currentId}/`);
+        const postsRes = await client.get(`/api/posts/user/${currentId}/`);
         setUserPosts(postsRes.data.results || []);
       }
     } catch (e) {
@@ -153,7 +153,7 @@ export default function MyProfile() {
           if (s3Key) {
             // 2. Patch the profile with the new s3_key
             // The backend serializer will move the file and update the 'avatar' field
-            await client.patch(`api/profiles/${userId}/`, {
+            await client.patch(`/api/profiles/${userId}/`, {
               s3_key: s3Key
             });
             
@@ -182,7 +182,7 @@ export default function MyProfile() {
     if (!userId) return;
 
     try {
-        await client.patch(`api/profiles/${userId}/`, {
+        await client.patch(`/api/profiles/${userId}/`, {
             bio: editBio,
             username: editUsername, 
         });
@@ -201,7 +201,7 @@ export default function MyProfile() {
   const confirmDelete = async () => {
     try {
       setDeleting(true);
-      await client.delete(`users/delete/`); 
+      await client.delete(`/users/delete/`); 
       
       await signOut(); 
     } catch (e) {

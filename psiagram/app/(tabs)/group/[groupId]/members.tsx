@@ -38,7 +38,7 @@ const MemberItem = ({
   useEffect(() => {
     // If avatar is missing from the group list, fetch the profile to get it
     if (!avatar) {
-      client.get(`api/profiles/${item.id}/`)
+      client.get(`/api/profiles/${item.id}/`)
         .then(res => {
           if (res.data?.avatar) {
             setAvatar(res.data.avatar);

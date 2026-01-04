@@ -11,7 +11,7 @@ interface SessionData {
   user?: any;
 }
 
-const apiUrl = "http://psiagram-env.eba-padhbqfj.eu-central-1.elasticbeanstalk.com/";
+const apiUrl = "http://psiagram-env.eba-padhbqfj.eu-central-1.elasticbeanstalk.com";
 
 // Zmienne do komunikacji z Contextem
 let logoutCallback: (() => void) | null = null;
@@ -65,7 +65,7 @@ function isTokenExpired(expirationIso: string): boolean {
 // Funkcja odświeżająca token (wyodrębniona, bo używana w obu interceptorach)
 async function refreshAuthToken(refreshToken: string): Promise<SessionData | null> {
   try {
-    const response = await axios.post(`${apiUrl}api/auth/token/refresh/`, {
+    const response = await axios.post(`${apiUrl}/api/auth/token/refresh/`, {
       refresh: refreshToken,
     });
 

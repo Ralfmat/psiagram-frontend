@@ -12,7 +12,7 @@ export default function SearchScreen() {
     if (query.length > 1) {
       const search = async () => {
         try {
-          const res = await client.get(`api/profiles/search/?search=${query}`);
+          const res = await client.get(`/api/profiles/search/?search=${query}`);
           setResults(res.data);
         } catch (e) {
           console.error(e);

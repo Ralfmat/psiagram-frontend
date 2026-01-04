@@ -55,9 +55,9 @@ export default function UserProfile() {
     try {
       setLoading(true);
       const [profileRes, postsRes, meRes] = await Promise.all([
-        client.get(`api/profiles/${userId}/`),
-        client.get(`api/posts/user/${userId}/`),
-        client.get("users/me/")
+        client.get(`/api/profiles/${userId}/`),
+        client.get(`/api/posts/user/${userId}/`),
+        client.get("/users/me/")
       ]);
       setProfileData(profileRes.data);
       setUserPosts(postsRes.data.results || []);
@@ -76,8 +76,8 @@ export default function UserProfile() {
       setListLoading(true);
       try {
           const endpoint = type === "followers" 
-            ? `api/profiles/${userId}/followers/` 
-            : `api/profiles/${userId}/following/`;
+            ? `/api/profiles/${userId}/followers/` 
+            : `/api/profiles/${userId}/following/`;
           
           const res = await client.get(endpoint);
           setUserList(res.data);
@@ -105,7 +105,7 @@ export default function UserProfile() {
             }));
         }
 
-        await client.post(`api/profiles/${targetUserId}/follow/`);
+        await client.post(`/api/profiles/${targetUserId}/follow/`);
     } catch (e) {
         console.error("List follow toggle failed", e);
         
@@ -132,7 +132,7 @@ export default function UserProfile() {
     }));
 
     try {
-      await client.post(`api/profiles/${userId}/follow/`);
+      await client.post(`/api/profiles/${userId}/follow/`);
     } catch (error) {
       console.error("Follow action failed:", error);
       
