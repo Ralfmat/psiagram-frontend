@@ -44,6 +44,7 @@ interface Event {
   group_name: string | null;
   organizer: number;
   organizer_username: string;
+  organizer_avatar: string | null; // Added avatar field
   attendees_count: number;
   created_at: string;
 }
@@ -167,8 +168,16 @@ export default function FeedScreen() {
 
   const renderEvent = (event: Event) => (
     <View style={[styles.postContainer, styles.eventContainer]}>
-      {/* Updated Header: Removed "in Group" part */}
+      {/* Header with Avatar */}
       <View style={styles.header}>
+        <Pressable onPress={() => router.push(`/user/${event.organizer}`)}>
+            {event.organizer_avatar ? (
+              <Image source={{ uri: event.organizer_avatar }} style={styles.userAvatar} />
+            ) : (
+              <View style={styles.userAvatar} />
+            )}
+        </Pressable>
+
         <View style={styles.headerTextContainer}>
           <Text style={styles.username}>{event.organizer_username}</Text>
           <Text style={styles.eventLabel}>created an event</Text>
@@ -181,7 +190,6 @@ export default function FeedScreen() {
       >
         <Text style={styles.eventName}>{event.name}</Text>
         
-        {/* New Location for Group Name */}
         {event.group_name && (
             <Text style={styles.eventGroupText}>with {event.group_name}</Text>
         )}
@@ -257,7 +265,7 @@ export default function FeedScreen() {
 
       <View style={styles.captionContainer}>
         <Text style={styles.captionText}>
-          {item.caption}
+          <Text style={styles.username}>{item.author_username}</Text> {item.caption}
         </Text>
       </View>
     </View>

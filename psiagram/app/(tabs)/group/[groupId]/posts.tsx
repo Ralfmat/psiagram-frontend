@@ -40,6 +40,7 @@ interface Event {
   end_time: string;
   organizer: number;
   organizer_username: string;
+  organizer_avatar: string | null;
   attendees_count: number;
   created_at: string;
 }
@@ -176,9 +177,17 @@ export default function GroupFeedScreen() {
     if (item.type === 'event') {
       return (
         <View style={[styles.postContainer, styles.eventContainer]}>
-          {/* Updated Header */}
+          {/* Header with Avatar */}
           <View style={styles.postHeader}>
-            <View>
+             <Pressable onPress={() => router.push(`/user/${item.organizer}`)}>
+                {item.organizer_avatar ? (
+                  <Image source={{ uri: item.organizer_avatar }} style={styles.userAvatar} />
+                ) : (
+                  <View style={styles.userAvatar} />
+                )}
+            </Pressable>
+            
+            <View style={{marginLeft: 8, justifyContent: 'center'}}>
               <Text style={styles.username}>{item.organizer_username}</Text>
               <Text style={styles.eventLabel}>created an event</Text>
             </View>
@@ -190,7 +199,6 @@ export default function GroupFeedScreen() {
           >
             <Text style={styles.eventName}>{item.name}</Text>
             
-            {/* Added Group Name in Card */}
             <Text style={styles.eventGroupText}>with {groupName}</Text>
 
             <Text style={styles.eventDate}>
@@ -259,7 +267,7 @@ export default function GroupFeedScreen() {
 
         <View style={styles.captionContainer}>
           <Text style={styles.captionText}>
-            {post.caption}
+            <Text style={styles.username}>{post.author_username}</Text> {post.caption}
           </Text>
         </View>
       </View>

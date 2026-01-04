@@ -1,6 +1,6 @@
 import client from "@/api/client";
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, useNavigation } from "expo-router"; // Added useNavigation
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -11,6 +11,7 @@ import {
   Text,
   View,
   Alert,
+  Platform,
 } from "react-native";
 import { useSession } from "@/context/ctx";
 
@@ -30,12 +31,11 @@ interface EventDetail {
 }
 
 export default function EventScreen() {
-  // Use 'id' or 'eventId' depending on your file name ([id].tsx vs [eventId].tsx).
-  // Based on your previous code, it seems you might be using [id].tsx, so we check both.
   const params = useLocalSearchParams();
   const eventId = params.id || params.eventId;
   
   const router = useRouter();
+  const navigation = useNavigation(); // Hook to check navigation history
   const { session } = useSession();
 
   const [event, setEvent] = useState<EventDetail | null>(null);
@@ -44,11 +44,9 @@ export default function EventScreen() {
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
   useEffect(() => {
-    // 1. Try to get ID from session (fastest)
     if (session) {
       try {
         const parsed = JSON.parse(session);
-        // dj-rest-auth might return 'pk' or 'id' depending on configuration
         const uid = parsed?.user?.id || parsed?.user?.pk;
         if (uid) {
           setCurrentUserId(Number(uid));
@@ -58,15 +56,13 @@ export default function EventScreen() {
       }
     }
 
-    // 2. Fetch from API to be reliable (in case session is stale or missing user data)
-    client.get('/users/me/')
+    client.get('/api/users/me/')
       .then(response => {
         if (response.data && response.data.id) {
           setCurrentUserId(response.data.id);
         }
       })
       .catch(err => {
-        // Silent fail or debug log, relying on session if API fails
         console.log("Could not fetch user details", err);
       });
 
@@ -87,11 +83,21 @@ export default function EventScreen() {
     }
   };
 
+  // --- SAFE BACK NAVIGATION HANDLER ---
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      router.back();
+    } else {
+      // Fallback if opened directly (e.g. via link or refresh)
+      router.replace("/(tabs)/feed");
+    }
+  };
+
   const handleJoinLeave = async () => {
     if (!event) return;
     setJoining(true);
     try {
-      const response = await client.post(`/api/events/${eventId}/join/`);
+      const response = await client.post(`/api/events/${event.id}/join/`);
       const newStatus = response.data.status === 'joined';
       
       setEvent(prev => prev ? ({
@@ -108,31 +114,47 @@ export default function EventScreen() {
     }
   };
 
-  const handleDelete = () => {
-    Alert.alert(
-      "Delete Event",
-      "Are you sure you want to delete this event? This action cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await client.delete(`/api/events/${eventId}/`);
-              Alert.alert("Deleted", "Event has been deleted.");
-              router.back();
-            } catch (error) {
-              console.error("Delete failed", error);
-              Alert.alert("Error", "Failed to delete event.");
-            }
-          }
-        }
-      ]
-    );
+  const performDelete = async () => {
+    try {
+      await client.delete(`/api/events/${eventId}/`);
+      
+      if (Platform.OS === 'web') {
+          window.alert("Event has been deleted.");
+      } else {
+          Alert.alert("Deleted", "Event has been deleted.");
+      }
+      handleBack(); // Use safe back handler
+    } catch (error) {
+      console.error("Delete failed", error);
+      if (Platform.OS === 'web') {
+          window.alert("Failed to delete event.");
+      } else {
+          Alert.alert("Error", "Failed to delete event.");
+      }
+    }
   };
 
-  // Ensure strict comparison works by converting to Number if necessary
+  const handleDelete = () => {
+    if (Platform.OS === 'web') {
+        if (window.confirm("Are you sure you want to delete this event? This action cannot be undone.")) {
+            performDelete();
+        }
+    } else {
+        Alert.alert(
+          "Delete Event",
+          "Are you sure you want to delete this event? This action cannot be undone.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { 
+              text: "Delete", 
+              style: "destructive",
+              onPress: performDelete
+            }
+          ]
+        );
+    }
+  };
+
   const isOrganizer = event && currentUserId && Number(event.organizer) === Number(currentUserId);
 
   if (loading) {
@@ -147,7 +169,8 @@ export default function EventScreen() {
     return (
       <View style={styles.centered}>
         <Text style={styles.errorText}>Event not found.</Text>
-        <Pressable onPress={() => router.back()}>
+        {/* Use handleBack here */}
+        <Pressable onPress={handleBack}>
             <Text style={{color: '#69324C', marginTop: 10, fontWeight: 'bold'}}>Go Back</Text>
         </Pressable>
       </View>
@@ -158,15 +181,15 @@ export default function EventScreen() {
     <SafeAreaView style={styles.screen}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={10}>
+        {/* Use handleBack here */}
+        <Pressable onPress={handleBack} hitSlop={10}>
           <Ionicons name="arrow-back" size={24} color="#1E1E1E" />
         </Pressable>
         <Text style={styles.headerTitle}>Event Details</Text>
         
-        {/* Edit/Delete Actions for Organizer */}
         {isOrganizer ? (
            <View style={styles.headerActions}>
-             <Pressable onPress={() => router.push(`/event/edit/${eventId}`)} hitSlop={10}>
+             <Pressable onPress={() => router.push(`/event/edit/${event.id}`)} hitSlop={10}>
                <Ionicons name="pencil" size={22} color="#1E1E1E" />
              </Pressable>
              <Pressable onPress={handleDelete} hitSlop={10}>
@@ -188,7 +211,6 @@ export default function EventScreen() {
             
             <Text style={styles.title}>{event.name}</Text>
             
-            {/* Host Section - No Avatar */}
             <View style={styles.organizerRow}>
                 <Text style={styles.label}>Hosted by </Text>
                 <Pressable onPress={() => router.push(`/user/${event.organizer}`)}>
@@ -198,7 +220,6 @@ export default function EventScreen() {
 
             <View style={styles.divider} />
 
-            {/* Time */}
             <View style={styles.infoRow}>
                 <Ionicons name="time-outline" size={24} color="#69324C" />
                 <View>
@@ -212,7 +233,6 @@ export default function EventScreen() {
                 </View>
             </View>
 
-            {/* Location */}
             <View style={styles.infoRow}>
                 <Ionicons name="location-outline" size={24} color="#69324C" />
                 <View>
@@ -221,19 +241,16 @@ export default function EventScreen() {
                 </View>
             </View>
             
-            {/* Description */}
             <View style={styles.descContainer}>
                 <Text style={styles.infoTitle}>About</Text>
                 <Text style={styles.descText}>{event.description}</Text>
             </View>
 
-            {/* Attendees Count */}
             <View style={styles.attendeesContainer}>
                 <Ionicons name="people" size={20} color="#5F7751" />
                 <Text style={styles.attendeesText}>{event.attendees_count} people attending</Text>
             </View>
 
-            {/* Join Button */}
             <Pressable 
                 style={[styles.joinBtn, event.is_attending && styles.leaveBtn]} 
                 onPress={handleJoinLeave}
