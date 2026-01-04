@@ -166,12 +166,10 @@ export default function EventScreen() {
         {/* Edit/Delete Actions for Organizer */}
         {isOrganizer ? (
            <View style={styles.headerActions}>
-             <Pressable onPress={() => router.push(`/event/edit/${eventId}`)} hitSlop={10}>
+             <Pressable onPress={() => router.push(`/event/${eventId}/edit`)} hitSlop={10}>
                <Ionicons name="pencil" size={22} color="#1E1E1E" />
              </Pressable>
-             <Pressable onPress={handleDelete} hitSlop={10}>
-               <Ionicons name="trash-outline" size={22} color="#D32F2F" />
-             </Pressable>
+             
            </View>
         ) : (
            <View style={{ width: 24 }} /> 
