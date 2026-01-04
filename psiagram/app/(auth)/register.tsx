@@ -113,7 +113,7 @@ export default function RegisterScreen() {
           <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>username</Text>
             <View style={styles.inputWrapper}>
-              <Ionicons name="mail-outline" size={18} color="#555" />
+              <Ionicons name="person-outline" size={18} color="#555" />
               <TextInput
                 style={styles.input}
                 value={email}
