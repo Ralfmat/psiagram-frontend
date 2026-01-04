@@ -18,10 +18,57 @@ import {
 } from "react-native";
 import DateTimePicker from '@react-native-community/datetimepicker';
 
+// Helper component for Date/Time picker
+const DateTimeField = ({ label, date, setDate }: { label: string, date: Date, setDate: (d: Date) => void }) => {
+  const [show, setShow] = useState(false);
+
+  const onChange = (event: any, selectedDate?: Date) => {
+    const currentDate = selectedDate || date;
+    if (Platform.OS === 'android') {
+      setShow(false);
+    }
+    setDate(currentDate);
+  };
+
+  return (
+    <View style={styles.dateFieldContainer}>
+      <Text style={styles.label}>{label}</Text>
+      {Platform.OS === 'android' && (
+         <Pressable onPress={() => setShow(true)} style={styles.dateInput}>
+            <Text style={styles.dateInputText}>
+              {date.toLocaleDateString()} {date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+            </Text>
+            <Ionicons name="calendar-outline" size={20} color="#666" />
+         </Pressable>
+      )}
+      {Platform.OS === 'ios' && (
+         <View style={styles.iosPickerContainer}>
+            <DateTimePicker
+              testID="dateTimePicker"
+              value={date}
+              mode={'datetime'}
+              is24Hour={true}
+              display="default"
+              onChange={onChange}
+            />
+         </View>
+      )}
+      {show && Platform.OS === 'android' && (
+        <DateTimePicker
+          testID="dateTimePicker"
+          value={date}
+          mode={'datetime'}
+          is24Hour={true}
+          display="default"
+          onChange={onChange}
+        />
+      )}
+    </View>
+  );
+};
 
 export default function EditEventScreen() {
-  const params = useLocalSearchParams();
-  const eventId = params.id || params.eventId;
+  const { eventId } = useLocalSearchParams();
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
@@ -92,26 +139,40 @@ export default function EditEventScreen() {
   };
 
   const handleDelete = () => {
-    Alert.alert(
-      "Delete Event",
-      "Are you sure you want to delete this event? This action cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          style: "destructive",
-          onPress: performDelete
-        }
-      ]
-    );
+    if (Platform.OS === 'web') {
+      // Use standard browser confirmation for web
+      if (window.confirm("Are you sure you want to delete this event? This action cannot be undone.")) {
+        performDelete();
+      }
+    } else {
+      // Use Native Alert for iOS/Android
+      Alert.alert(
+        "Delete Event",
+        "Are you sure you want to delete this event? This action cannot be undone.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { 
+            text: "Delete", 
+            style: "destructive",
+            onPress: performDelete
+          }
+        ]
+      );
+    }
   };
 
   const performDelete = async () => {
     setDeleting(true);
     try {
       await client.delete(`/api/events/${eventId}/`);
-      Alert.alert("Deleted", "Event has been deleted.");
-      // Navigate back to Feed or previous screen (pop twice: edit -> detail -> feed)
+      
+      if (Platform.OS === 'web') {
+        window.alert("Event has been deleted.");
+      } else {
+        Alert.alert("Deleted", "Event has been deleted.");
+      }
+
+      // Dismiss all to clear stack and replace with feed
       router.dismissAll(); 
       router.replace("/(tabs)/feed");
     } catch (error) {
@@ -262,13 +323,6 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     textTransform: "uppercase",
   },
-  sectionLabel: { 
-    fontSize: 13, 
-    fontWeight: "700", 
-    color: "#5F7751", 
-    marginBottom: 6, 
-    textTransform: "uppercase" 
-  },
   input: {
     backgroundColor: "#fff",
     borderWidth: 1,
@@ -319,7 +373,6 @@ const styles = StyleSheet.create({
   disabledBtn: {
     opacity: 0.7,
   },
-  
   // Date Picker Styles
   dateFieldContainer: { marginBottom: 16 },
   dateInput: {

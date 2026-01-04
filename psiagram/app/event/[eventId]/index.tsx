@@ -1,7 +1,7 @@
 import client from "@/api/client";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -12,7 +12,6 @@ import {
   View,
   Alert,
 } from "react-native";
-import { useSession } from "@/context/ctx";
 
 interface EventDetail {
   id: number;
@@ -30,15 +29,37 @@ interface EventDetail {
 }
 
 export default function EventScreen() {
-  // Fetch Event Data (useFocusEffect ensures data refreshes when coming back from Edit page)
+  const { eventId } = useLocalSearchParams();
+  const router = useRouter();
+
+  const [event, setEvent] = useState<EventDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [joining, setJoining] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+
+  // 1. Fetch Current User ID from /users/me/
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+        try {
+            const response = await client.get("/users/me/");
+            setCurrentUserId(response.data.id);
+        } catch (error) {
+            console.error("Failed to fetch current user:", error);
+        }
+    };
+    fetchCurrentUser();
+  }, []);
+
+  // 2. Determine if user is organizer
+  const isOrganizer = event && currentUserId && event.organizer === currentUserId;
+
+  // 3. Fetch Event Data
   useFocusEffect(
     useCallback(() => {
       if (!eventId) return;
       
       const fetchEventDetails = async () => {
         try {
-          // If we are refreshing, we might not want to show full loading spinner every time, 
-          // but for now strict loading state ensures fresh data display.
           const response = await client.get(`/api/events/${eventId}/`);
           setEvent(response.data);
         } catch (error) {
@@ -105,7 +126,7 @@ export default function EventScreen() {
         {/* Only Organizer sees the Edit button */}
         {isOrganizer ? (
            <View style={styles.headerActions}>
-             <Pressable onPress={() => router.push(`/event/edit/${eventId}`)} hitSlop={10}>
+             <Pressable onPress={() => router.push(`/event/${eventId}/edit`)} hitSlop={10}>
                <Ionicons name="pencil" size={24} color="#69324C" />
              </Pressable>
            </View>
