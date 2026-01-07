@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   TouchableOpacity
 } from "react-native";
+import { Background } from "@react-navigation/elements";
 
 const { width } = Dimensions.get("window");
 const GAP = 6;
@@ -156,7 +157,10 @@ export default function UserProfile() {
   const bioLines = profileData?.bio ? profileData.bio.split("\n") : [];
 
   const Header = (
-    <View>
+    <View style={{ backgroundColor: "transparent", marginBottom: 15 }}>
+
+
+    <View style={{backgroundColor:"#FAF7F0"}}>
       <View style={styles.topHeader}>
         <Pressable style={styles.backRow} onPress={() => router.back()} hitSlop={10}>
           <Ionicons name="chevron-back" size={26} color="#69324C" />
@@ -194,7 +198,7 @@ export default function UserProfile() {
 
             {/* Main Profile Follow Button (Only if not me) */}
             {currentUserId !== Number(userId) && (
-                 <View style={styles.buttonsRow}>
+                
                  <Pressable
                    style={[
                      styles.followBtn,
@@ -211,7 +215,7 @@ export default function UserProfile() {
                      {isFollowing ? "following" : "follow"}
                    </Text>
                  </Pressable>
-               </View>
+              
             )}
            
           </View>
@@ -226,6 +230,7 @@ export default function UserProfile() {
       </View>
       <View style={{ height: 10 }} />
     </View>
+    </View>
   );
 
   return (
@@ -234,7 +239,8 @@ export default function UserProfile() {
         data={userPosts}
         keyExtractor={(item) => String(item.id)}
         numColumns={NUM_COLS}
-        columnWrapperStyle={{ gap: GAP }}
+        columnWrapperStyle={{ gap: GAP, paddingHorizontal: H_PADDING }}
+        style={{ backgroundColor: "#173F1A" }}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={Header}
         ItemSeparatorComponent={() => <View style={{ height: GAP }} />}
@@ -327,24 +333,27 @@ function Stat({ value, label }: { value: number; label: string }) {
 
 const styles = StyleSheet.create({
     screen: { flex: 1, backgroundColor: "#FAF7F0" },
-    listContent: { paddingHorizontal: H_PADDING, paddingTop: 6, paddingBottom: 70 },
-    topHeader: { height: 52, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 8 },
-    backRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-    backText: { fontSize: 14, fontWeight: "800", color: "#69324C", textTransform: "lowercase" },
-    profileCard: { backgroundColor: "#FAF7F0", padding: 12 },
+    listContent: { backgroundColor: "#0B380C", flexGrow: 1 ,paddingBottom: 50, },
+    topHeader: { height: 52, flexDirection: "row", alignItems: "center", paddingHorizontal: 15 },
+    
+    //back button- mozna kopiowac do innych ekranow
+    backRow: { flexDirection: "row", alignItems: "center",},
+    backText: { fontSize: 16, fontWeight: "800", color: "#1E1E1E", marginLeft: 5 },
+    
+    profileCard: { backgroundColor: "#FAF7F0", paddingHorizontal: H_PADDING, padding: 12 },
     profileTopRow: { flexDirection: "row", gap: 10 },
-    avatar: { width: 120, height: 120, borderRadius: 80, borderColor: "#69324C", borderWidth: 1 },
+    avatar: {  width: 120, height: 120, borderRadius: 80, borderColor: "#69324C", borderWidth: 1 },
     avatarPlaceholder: { backgroundColor: "#E9E3D8" },
     rightCol: { flex: 1 },
-    username: { fontSize: 17, fontWeight: "bold", color: "#1E1E1E", marginBottom: 10 },
-    statsRow: { flexDirection: "row", marginRight: 20, alignSelf: "center" },
-    stat: { width: 70, textAlign: "center", marginRight: 10 },
-    statValue: { fontSize: 20, fontWeight: "bold", color: "#1E1E1E", textAlign: "center" },
-    statLabel: { fontSize: 13, color: "#3B3B3B", textAlign: "center" },
-    buttonsRow: { marginTop: 12, flexDirection: "row" },
+    username: { fontSize: 20, fontWeight: "bold", color: "#1E1E1E", marginBottom: 10},
+    statsRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 15 },
+    stat: { alignItems: "center"},
+    statValue: { fontSize: 18, fontWeight: "bold", color: "#1E1E1E" },
+    statLabel: { fontSize: 12, color: "#3B3B3B" },
+    
     bioBox: { marginTop: 10, paddingTop: 10 },
     line: { height: 1, backgroundColor: "#69324C", marginVertical: 6 },
-    bioLine: { fontSize: 14, color: "#1E1E1E", lineHeight: 16 },
+    bioLine: { fontSize: 14, color: "#1E1E1E", lineHeight: 16},
     tile: { width: TILE, height: TILE, borderRadius: 6, overflow: "hidden", backgroundColor: "#173F1A" },
     tileImage: { width: "100%", height: "100%" },
     
@@ -370,10 +379,10 @@ const styles = StyleSheet.create({
     miniFollowingText: { color: "#1E1E1E" },
 
     // Main Profile Buttons
-    followBtn: { borderRadius: 10, paddingVertical: 8, paddingHorizontal: 14, alignSelf: "center" },
-    followBtnActive: { backgroundColor: "#69324C", width: 220, height: 30 },
-    followingBtn: { backgroundColor: "#E9E3D8", width: 220, height: 30 },
-    followText: { fontSize: 12, fontWeight: "bold", textTransform: "lowercase", alignSelf: "center" },
+    followBtn: { borderRadius: 20, paddingVertical: 7, alignItems: "center", justifyContent: "center" },
+    followBtnActive: { backgroundColor: "#69324C" },
+    followingBtn: { backgroundColor: "#E9E3D8" },
+    followText: { fontSize: 14, fontWeight: "bold" },
     followTextActive: { color: "#FAF7F0" },
     followingText: { color: "#1E1E1E" },
 });

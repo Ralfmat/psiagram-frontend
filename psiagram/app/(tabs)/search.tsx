@@ -28,7 +28,7 @@ export default function SearchScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#69324C" />
+        <Ionicons name="search" size={18} color="#999" />
         <TextInput 
             style={styles.input} 
             placeholder="search users..." 
@@ -56,10 +56,10 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
-    screen: { flex: 1, backgroundColor: "#FAF7F0", paddingTop: 50 },
-    searchContainer: { flexDirection: "row", alignItems: "center", backgroundColor: "#E9E3D8", margin: 18, padding: 10, borderRadius: 10 },
-    input: { flex: 1, marginLeft: 10, fontSize: 16 },
+    screen: { flex: 1, backgroundColor: "#FAF7F0", paddingTop: 10 },
+    searchContainer: { flexDirection: "row", alignItems: "center", backgroundColor: "transparent", borderWidth:1, borderColor: "#69324C",marginHorizontal: 18,marginVertical: 10, paddingHorizontal: 15, paddingVertical: 8, borderRadius: 25 },
+    input: { flex: 1, marginLeft: 10, fontSize: 16 ,},
     resultItem: { flexDirection: "row", alignItems: "center", padding: 15, borderBottomWidth: 1, borderBottomColor: "#E9E3D8" },
-    avatar: { width: 40, height: 40, borderRadius: 20, marginRight: 12, backgroundColor: "#ccc" },
+    avatar: { width: 45, height: 40, borderRadius: 20, marginRight: 12, backgroundColor: "#ccc" },
     username: { fontSize: 16, color: "#1E1E1E" }
 });
