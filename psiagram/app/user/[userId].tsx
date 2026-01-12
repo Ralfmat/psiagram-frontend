@@ -345,9 +345,9 @@ const styles = StyleSheet.create({
     avatar: {  width: 120, height: 120, borderRadius: 80, borderColor: "#69324C", borderWidth: 1 },
     avatarPlaceholder: { backgroundColor: "#E9E3D8" },
     rightCol: { flex: 1 },
-    username: { fontSize: 20, fontWeight: "bold", color: "#1E1E1E", marginBottom: 10},
+    username: { fontSize: 20, fontWeight: "bold", color: "#1E1E1E", marginBottom: 10,paddingHorizontal:10},
     statsRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 15 },
-    stat: { alignItems: "center"},
+    stat: { alignItems: "center",paddingHorizontal:10},
     statValue: { fontSize: 18, fontWeight: "bold", color: "#1E1E1E" },
     statLabel: { fontSize: 12, color: "#3B3B3B" },
     

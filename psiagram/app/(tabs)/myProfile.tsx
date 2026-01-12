@@ -29,6 +29,14 @@ const NUM_COLS = 3;
 const H_PADDING = 18;
 const TILE = (width - H_PADDING * 2 - GAP * (NUM_COLS - 1)) / NUM_COLS;
 
+interface UserListItem {
+    id: number;
+    user_id: number;
+    username: string;
+    avatar: string | null;
+    is_following: boolean;
+}
+
 /**
  * Helper to upload image to S3
  * Returns the file_key if successful, or null if failed.
@@ -92,6 +100,13 @@ export default function MyProfile() {
   const [editUsername, setEditUsername] = useState("");
   const [editBio, setEditBio] = useState("");
 
+  //Open followers/following lists
+  const [listModalVisible, setListModalVisible] = useState(false);
+  const [listTitle, setListTitle] = useState("");
+  const [userList, setUserList] = useState<UserListItem[]>([]);
+  const [listLoading, setListLoading] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   // Fetch Data Function
   const fetchData = async () => {
     try {
@@ -212,6 +227,83 @@ export default function MyProfile() {
     }
   };
 
+  //followers/following lists
+  const openUserList = async (type: "followers" | "following") => {
+      setListTitle(type);
+      setListModalVisible(true);
+      setListLoading(true);
+      try {
+          const endpoint = type === "followers" 
+            ? `/api/profiles/${userId}/followers/` 
+            : `/api/profiles/${userId}/following/`;
+          
+          const res = await client.get(endpoint);
+          setUserList(res.data);
+      } catch (e) {
+          console.error("Failed to fetch list", e);
+      } finally {
+          setListLoading(false);
+      }
+  };
+  const navigateToUser = (targetId: number) => {
+      setListModalVisible(false);
+      router.push({ pathname: "/user/[userId]", params: { userId: targetId } });
+  };
+  const toggleFollow = async () => {
+    const offset = isFollowing ? -1 : 1;
+
+    setIsFollowing((prev) => !prev);
+    setProfileData((prev: any) => ({
+      ...prev,
+      followers_count: (prev?.followers_count || 0) + offset,
+    }));
+
+    try {
+      await client.post(`/api/profiles/${userId}/follow/`);
+    } catch (error) {
+      console.error("Follow action failed:", error);
+      
+      setIsFollowing((prev) => !prev);
+      setProfileData((prev: any) => ({
+        ...prev,
+        followers_count: (prev?.followers_count || 0) - offset,
+      }));
+    }
+  };  
+  const toggleListFollow = async (targetUserId: number, currentStatus: boolean, index: number) => {
+    const offset = currentStatus ? -1 : 1;
+    
+    const isMyProfile = currentUserId === Number(userId);
+
+    try {
+        const newList = [...userList];
+        newList[index].is_following = !currentStatus;
+        setUserList(newList);
+
+        if (isMyProfile) {
+            setProfileData((prev: any) => ({
+                ...prev,
+                following_count: (prev?.following_count || 0) + offset,
+            }));
+        }
+
+        await client.post(`/api/profiles/${targetUserId}/follow/`);
+    } catch (e) {
+        console.error("List follow toggle failed", e);
+        
+        const newList = [...userList];
+        newList[index].is_following = currentStatus;
+        setUserList(newList);
+
+        if (isMyProfile) {
+             setProfileData((prev: any) => ({
+                ...prev,
+                following_count: (prev?.following_count || 0) - offset,
+            }));
+        }
+    }
+  };
+
   if (loading && !profileData) {
     return (
       <View style={[styles.screen, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -239,9 +331,20 @@ export default function MyProfile() {
             <Text style={styles.username}>{profileData?.user?.username}</Text>
 
             <View style={styles.statsRow}>
-              <Stat value={userPosts.length} label="posts" />
-              <Stat value={profileData?.followers_count || 0} label="followers" />
-              <Stat value={profileData?.following_count || 0} label="following" />
+              <View style={styles.stat}>
+                <Stat value={userPosts.length} label="posts" />
+              </View>
+
+              {/* CLICKABLE FOLLOWERS */}
+              <Pressable onPress={() => openUserList("followers")}style={styles.stat}>
+                <Stat value={profileData?.followers_count || 0} label="followers" />
+              </Pressable>
+
+              {/* CLICKABLE FOLLOWING */}
+              <Pressable onPress={() => openUserList("following")}>
+                <Stat value={profileData?.following_count || 0} label="following" />
+              </Pressable>
+            
             </View>
 
             <View style={styles.buttonsRow}>
@@ -372,7 +475,55 @@ export default function MyProfile() {
           </Pressable>
         </Pressable>
       </Modal>
-
+  {/* Users List Modal */}
+  <Modal visible={listModalVisible} transparent animationType="fade" onRequestClose={() => setListModalVisible(false)}>
+  <Pressable style={styles.backdrop} onPress={() => setListModalVisible(false)}>
+      <Pressable style={styles.listCard} onPress={() => {}}>
+          <Text style={styles.popoutTitle}>{listTitle}</Text>
+          
+          {listLoading ? (
+              <ActivityIndicator color="#69324C" />
+          ) : (
+              <FlatList 
+                  data={userList}
+                  keyExtractor={(item) => String(item.id)}
+                  showsVerticalScrollIndicator={false}
+                  renderItem={({item, index}) => (
+                      <View style={styles.userRow}>
+                          <TouchableOpacity 
+                              style={styles.userInfo} 
+                              onPress={() => navigateToUser(item.user_id)}
+                          >
+                              {item.avatar ? (
+                                  <Image source={{ uri: item.avatar }} style={styles.listAvatar} />
+                              ) : (
+                                  <View style={[styles.listAvatar, styles.avatarPlaceholder]} />
+                              )}
+                              <Text style={styles.listUsername}>{item.username}</Text>
+                          </TouchableOpacity>
+                          {item.user_id !== currentUserId && (
+                              <TouchableOpacity 
+                                  style={[
+                                      styles.miniFollowBtn,
+                                      item.is_following ? styles.miniFollowingBtn : styles.miniFollowBtnActive
+                                  ]}
+                                  onPress={() => toggleListFollow(item.user_id, item.is_following, index)}
+                              >
+                                  <Text style={[
+                                      styles.miniFollowText,
+                                      item.is_following ? styles.miniFollowingText : styles.miniFollowTextActive
+                                  ]}>
+                                      {item.is_following ? "following" : "follow"}
+                                  </Text>
+                              </TouchableOpacity>
+                          )}
+                      </View>
+                  )}
+              />
+          )}
+      </Pressable>
+  </Pressable>
+  </Modal>
     </SafeAreaView>
   );
 }
@@ -393,18 +544,19 @@ const styles = StyleSheet.create({
   profileCard: { backgroundColor: "#FAF7F0", paddingHorizontal: H_PADDING, padding: 12 },
   profileTopRow: { flexDirection: "row", gap: 10 },
   avatar: { width: 120, height: 120, borderRadius: 80, borderColor: "#69324C", borderWidth: 1 },
-  rightCol: { flex: 1 },
-  username: { fontSize: 17, fontWeight: "bold", color: "#1E1E1E", marginBottom: 10 },
-  statsRow: { flexDirection: "row",justifyContent: "space-between", marginBottom: 12, paddingRight:5 },
-  stat: { alignItems: "center", flex: 10 },
-  statValue: { fontSize: 20, fontWeight: "bold", color: "#1E1E1E", textAlign: "center" },
-  statLabel: { fontSize: 13, color: "#3B3B3B", textAlign: "center" },
+  rightCol: { flex: 1},
+  username: { fontSize: 20, fontWeight: "bold", color: "#1E1E1E", marginBottom: 10,paddingHorizontal:10},
+  statsRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 15 ,paddingHorizontal:10},
+  stat: { alignItems: "center",},
+  statValue: { fontSize: 18, fontWeight: "bold", color: "#1E1E1E" },
+  statLabel: { fontSize: 12, color: "#3B3B3B" },
+    
   line: { height: 1, backgroundColor: "#69324C", marginVertical: 6 },
-  buttonsRow: { flexDirection: "row", gap: 20, marginTop: 12 },
-  btnPrimary: { backgroundColor: "#69324C", borderRadius: 10, paddingVertical: 8, paddingHorizontal: 10 },
-  btnPrimaryText: { color: "#FAF7F0", fontSize: 12, fontWeight: "bold", textTransform: "lowercase" },
-  btnSecondary: { backgroundColor: "#69324C", borderRadius: 10, paddingVertical: 8, paddingHorizontal: 10 },
-  btnSecondaryText: { color: "#FAF7F0", fontSize: 12, fontWeight: "700", textTransform: "lowercase" },
+  buttonsRow: { flexDirection: "row",justifyContent: "space-between", gap: 5, marginTop: 5, width:'100%'},
+  btnPrimary: { flex:1, backgroundColor: "#69324C", borderRadius: 10,  alignItems:'center',justifyContent: "center", height: 40},
+  btnPrimaryText: { color: "#FAF7F0", fontSize: 14, fontWeight: "bold", textTransform: "lowercase", textAlign: "center",includeFontPadding: false,textAlignVertical: "center"},
+  btnSecondary: { flex:1, backgroundColor: "#69324C", borderRadius: 10, alignItems:'center',justifyContent: "center",height: 40},
+  btnSecondaryText: { color: "#FAF7F0", fontSize: 14, fontWeight: "bold", textTransform: "lowercase", textAlign: "center",includeFontPadding: false, textAlignVertical: "center"},
   bioBox: { marginTop: 10, borderTopColor: "#C9BEB1", paddingTop: 10 },
   name: { fontSize: 15, fontWeight: "900", color: "#1E1E1E", marginBottom: 4 },
   bioLine: { fontSize: 14, color: "#1E1E1E", lineHeight: 16 },
@@ -429,4 +581,19 @@ const styles = StyleSheet.create({
   avatarPlaceholder: { backgroundColor: "#E9E3D8" },
   avatarCard: { backgroundColor: "#FAF7F0", borderRadius: 18, padding: 16, maxHeight: "80%", alignItems: "center" },
   avatarPreview: { width: "100%", height: 320, borderRadius: 16, backgroundColor: "#E9E3D8", marginTop: 8 },
+  listCard: { backgroundColor: "#FAF7F0", borderRadius: 18, padding: 16, height: "60%", width: "100%" },
+  
+  // List Item Styles
+  userRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
+  userInfo: { flexDirection: "row", alignItems: "center", flex: 1 },
+  listAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#E9E3D8", marginRight: 10, borderWidth: 1, borderColor: "#69324C" },
+  listUsername: { fontSize: 14, fontWeight: "bold", color: "#1E1E1E" },
+  // Mini Buttons (in Modal)
+  miniFollowBtn: { borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12, borderWidth: 1 },
+  miniFollowBtnActive: { backgroundColor: "#69324C", borderColor: "#69324C" },
+  miniFollowingBtn: { backgroundColor: "transparent", borderColor: "#C9BEB1" },
+  miniFollowText: { fontSize: 11, fontWeight: "bold" },
+  miniFollowTextActive: { color: "#FAF7F0" },
+  miniFollowingText: { color: "#1E1E1E" },  
+  
 });
