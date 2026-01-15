@@ -329,7 +329,7 @@ export default function CreateScreen() {
 
   const renderGroupSelector = () => (
     <View style={styles.groupSection}>
-      <Text style={styles.sectionLabel}>Post to...</Text>
+      <Text style={styles.sectionLabel}>post to...</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.groupScroll}>
         <Pressable
           style={[styles.groupChip, selectedGroupId === null && styles.groupChipSelected]}
@@ -388,10 +388,10 @@ export default function CreateScreen() {
       {/* Only show form if image is valid */}
       {postS3Key && (
         <View style={styles.formBody}>
-          <Text style={styles.sectionLabel}>Caption</Text>
+          <Text style={styles.sectionLabel}>caption</Text>
           <TextInput
             style={styles.inputMultiline}
-            placeholder="What's your dog thinking?"
+            placeholder="what's your dog thinking?"
             multiline
             value={postCaption}
             onChangeText={setPostCaption}
@@ -404,7 +404,7 @@ export default function CreateScreen() {
             onPress={handleSubmitPost}
             disabled={loading}
           >
-            {loading ? <ActivityIndicator color="#FAF7F0"/> : <Text style={styles.submitBtnText}>Publish Post</Text>}
+            {loading ? <ActivityIndicator color="#FAF7F0"/> : <Text style={styles.submitBtnText}>publish post</Text>}
           </TouchableOpacity>
         </View>
       )}
@@ -454,7 +454,7 @@ export default function CreateScreen() {
         onPress={handleSubmitEvent}
         disabled={loading}
       >
-        {loading ? <ActivityIndicator color="#FAF7F0"/> : <Text style={styles.submitBtnText}>Create Event</Text>}
+        {loading ? <ActivityIndicator color="#FAF7F0"/> : <Text style={styles.submitBtnText}>create event</Text>}
       </TouchableOpacity>
     </View>
   );
@@ -470,13 +470,13 @@ export default function CreateScreen() {
               style={[styles.toggleBtn, mode === "POST" && styles.toggleBtnActive]}
               onPress={() => setMode("POST")}
             >
-              <Text style={[styles.toggleText, mode === "POST" && styles.toggleTextActive]}>Create Post</Text>
+              <Text style={[styles.toggleText, mode === "POST" && styles.toggleTextActive]}>create post</Text>
             </Pressable>
             <Pressable 
               style={[styles.toggleBtn, mode === "EVENT" && styles.toggleBtnActive]}
               onPress={() => setMode("EVENT")}
             >
-              <Text style={[styles.toggleText, mode === "EVENT" && styles.toggleTextActive]}>Create Event</Text>
+              <Text style={[styles.toggleText, mode === "EVENT" && styles.toggleTextActive]}>create event</Text>
             </Pressable>
           </View>
 
@@ -521,7 +521,7 @@ const styles = StyleSheet.create({
   overlaySubText: { color: "#fff", fontSize: 14 },
 
   formBody: { paddingHorizontal: 16 },
-  sectionLabel: { fontSize: 13, fontWeight: "700", color: "#5F7751", marginBottom: 6, textTransform: "uppercase" },
+  sectionLabel: { fontSize: 15, fontWeight: "700", color: "#5F7751", marginBottom: 6, textTransform: "lowercase" },
   input: {
     backgroundColor: "#fff",
     borderWidth: 1,

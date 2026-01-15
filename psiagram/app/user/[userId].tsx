@@ -161,7 +161,7 @@ export default function UserProfile() {
 
 
     <View style={{backgroundColor:"#FAF7F0"}}>
-      <View style={styles.topHeader}>
+      <View style={styles.header}>
         <Pressable style={styles.backRow} onPress={() => router.back()} hitSlop={10}>
           <Ionicons name="chevron-back" size={26} color="#69324C" />
           <Text style={styles.backText}>back</Text>
@@ -334,11 +334,11 @@ function Stat({ value, label }: { value: number; label: string }) {
 const styles = StyleSheet.create({
     screen: { flex: 1, backgroundColor: "#FAF7F0" },
     listContent: { backgroundColor: "#0B380C", flexGrow: 1 ,paddingBottom: 50, },
-    topHeader: { height: 52, flexDirection: "row", alignItems: "center", paddingHorizontal: 15 },
+    header: { height: 52, flexDirection: "row", alignItems: "center", paddingHorizontal: 15 },
     
     //back button- mozna kopiowac do innych ekranow
     backRow: { flexDirection: "row", alignItems: "center",},
-    backText: { fontSize: 16, fontWeight: "800", color: "#1E1E1E", marginLeft: 5 },
+    backText: { fontSize: 16, fontWeight: "800", color: "#69324C", marginLeft: 5 },
     
     profileCard: { backgroundColor: "#FAF7F0", paddingHorizontal: H_PADDING, padding: 12 },
     profileTopRow: { flexDirection: "row", gap: 10 },

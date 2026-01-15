@@ -119,11 +119,14 @@ export default function PostDetails() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           
-          <View style={styles.header}>
-            <Pressable style={styles.backRow} onPress={() => router.back()}>
-              <Ionicons name="chevron-back" size={30} color="#69324C" />
-              <Text style={styles.backText}>back</Text>
-            </Pressable>
+          
+            <View style={styles.header}>
+             <Pressable style={styles.backRow} onPress={() => router.back()}>
+                <Ionicons name="chevron-back" size={30} color="#69324C"  />
+                <Text style={styles.backText}>back</Text>
+              </Pressable>              
+            
+ 
             <View style={{ width: 70, alignItems: 'flex-end' }}>
               {isOwner && (
                 <Pressable onPress={handleDelete} hitSlop={10}>
@@ -219,9 +222,12 @@ export default function PostDetails() {
 
 const styles = StyleSheet.create({
     screen: { flex: 1, backgroundColor: "#FAF7F0" },
-    header: { height: 56, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#FAF7F0", marginBottom: 20 },
-    backRow: { flexDirection: "row", alignItems: "center", width: 60 },
-    backText: { color: "#69324C", fontSize: 14, fontWeight: "700", textTransform: "lowercase" },
+    
+    header: { height: 52, paddingHorizontal: 15, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#FAF7F0", marginBottom: 20 },
+    backRow: { flexDirection: "row", alignItems: "center", },
+    backText: { color: "#69324C", fontSize: 16, fontWeight: "800", textTransform: "lowercase",marginLeft: 5 },
+    
+    
     headerTitle: { fontSize: 14, fontWeight: "bold", color: "#1E1E1E", textTransform: "lowercase" },
     userRow: { paddingHorizontal: 14, paddingBottom: 10, flexDirection: "row", alignItems: "center", gap: 10 },
     userAvatar: { width: 26, height: 26, borderRadius: 13, backgroundColor: "#E9E3D8" },

@@ -31,15 +31,16 @@ function timeAgo(dateString: string) {
   const past = new Date(dateString);
   const diffInSeconds = Math.floor((now.getTime() - past.getTime()) / 1000);
 
-  if (diffInSeconds < 60) return `${diffInSeconds}s`;
+  if (diffInSeconds < 60) return `${diffInSeconds} seconds ago`;
   const diffInMinutes = Math.floor(diffInSeconds / 60);
-  if (diffInMinutes < 60) return `${diffInMinutes}m`;
+  if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`;
   const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) return `${diffInHours}h`;
+  if (diffInHours < 24) return `${diffInHours} hours ago`;
   const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays < 7) return `${diffInDays}d`;
+  if (diffInDays < 7) return `${diffInDays} days ago`;
   
-  return `${Math.floor(diffInDays / 7)}w`;
+  const weeks = Math.floor(diffInDays / 7);
+  return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
 }
 
 export default function NotificationsScreen() {
@@ -87,15 +88,15 @@ export default function NotificationsScreen() {
 
     switch (item.notification_type) {
       case "LIKE":
-        message = "liked your post.";
+        message = "gave bone to your post!";
         icon = "heart";
         break;
       case "COMMENT":
-        message = "commented on your post.";
+        message = "commented on your post!";
         icon = "chatbubble";
         break;
       case "FOLLOW":
-        message = "started following you.";
+        message = "started following you!";
         icon = "person-add";
         break;
     }
@@ -115,9 +116,9 @@ export default function NotificationsScreen() {
 
         <View style={styles.textContainer}>
           <Text style={styles.textLine}>
-            <Text style={styles.username}>{item.sender_username}</Text> <Text style={styles.message}>{message}</Text>
-            <Text style={styles.timeText}> {timeAgo(item.created_at)}</Text>
+            <Text style={styles.username}>{item.sender_username}</Text> <Text style={styles.message}>{message}</Text>            
           </Text>
+          <Text style={styles.timeText}> {timeAgo(item.created_at)}</Text>
         </View>
 
         {item.post_image ? (
@@ -142,7 +143,7 @@ export default function NotificationsScreen() {
         </Pressable>
       </View>
 
-      <Text style={styles.pageTitle}>Notifications</Text>
+      <Text style={styles.pageTitle}>notifications</Text>
       
       <FlatList
         data={notifications}
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
   backRow: { flexDirection: "row", alignItems: "center", width: 60 },
   backText: { color: "#69324C", fontSize: 14, fontWeight: "700", textTransform: "lowercase" },
 
-  pageTitle: { fontSize: 24, fontWeight: "bold", paddingHorizontal: 20, paddingBottom: 10, color: "#69324C" },
+  pageTitle: { fontSize: 14, fontWeight: "bold", color: "#1E1E1E",textTransform: 'lowercase', textAlign:"center" },
 
   row: {
     flexDirection: "row",
@@ -183,7 +184,7 @@ const styles = StyleSheet.create({
   },
   avatarContainer: { marginRight: 12 },
   avatar: { width: 44, height: 44, borderRadius: 22 },
-  textContainer: { flex: 1, marginRight: 10 },
+  textContainer: { flex: 1, marginRight: 10 ,alignItems: 'flex-start',},
   textLine: { fontSize: 14, color: "#1E1E1E", lineHeight: 20 },
   username: { fontWeight: "bold" },
   message: { color: "#1E1E1E" },

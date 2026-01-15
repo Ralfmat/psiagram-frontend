@@ -285,7 +285,7 @@ export default function GroupFeedScreen() {
             {groupName ? `${groupName}` : "Group Feed"}
         </Text>
         <Pressable onPress={() => router.push(`/(tabs)/group/${groupId}/info`)} hitSlop={10}>
-          <Ionicons name="information-circle-outline" size={26} color="#1E1E1E" />
+          <Ionicons name="information-circle-outline" size={24} color="#1E1E1E" />
         </Pressable>
       </View>
 
@@ -330,9 +330,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FAF7F0",
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#1E1E1E",
+    fontSize: 14, fontWeight: "bold", color: "#1E1E1E",textTransform: 'lowercase', textAlign:"center"
   },
   postContainer: {
     marginBottom: 24,
