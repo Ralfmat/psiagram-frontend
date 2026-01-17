@@ -43,11 +43,18 @@ function timeAgo(dateString: string) {
   return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
 }
 
+function getDaysDifference(dateString: string) {
+  const now = new Date();
+  const past = new Date(dateString);
+  const diffInTime = now.getTime() - past.getTime();
+  return diffInTime / (1000 * 3600 * 24);
+}
+
 export default function NotificationsScreen() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
+  const [showOlder, setShowOlder] = useState(false);
   const fetchNotifications = async () => {
     try {
       const res = await client.get("/api/notifications/");
@@ -81,7 +88,10 @@ export default function NotificationsScreen() {
       router.push(`/post/${item.post}`);
     }
   };
-
+  const filteredNotifications = notifications.filter(item => {
+    const daysDiff = getDaysDifference(item.created_at);
+    return showOlder ? daysDiff <= 30 : daysDiff <= 5;
+  });
   const renderItem = ({ item }: { item: Notification }) => {
     let message = "";
     let icon = "";
@@ -142,11 +152,13 @@ export default function NotificationsScreen() {
           <Text style={styles.backText}>back</Text>
         </Pressable>
       </View>
-
-      <Text style={styles.pageTitle}>notifications</Text>
+      <Text style={styles.pageTitle}>
+        {showOlder ? "last 30 days" : "last 5 days"}
+      </Text>
+      {/* <Text style={styles.pageTitle}>notifications</Text> */}
       
       <FlatList
-        data={notifications}
+        data={filteredNotifications}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderItem}
         refreshControl={
@@ -154,6 +166,13 @@ export default function NotificationsScreen() {
         }
         contentContainerStyle={{ paddingBottom: 20 }}
         ListEmptyComponent={<Text style={styles.emptyText}>No new notifications</Text>}
+        ListFooterComponent={
+          !showOlder ? (
+            <Pressable onPress={() => setShowOlder(true)} style={styles.footerButton}>
+              <Text style={styles.showOlderText}>show older</Text>
+            </Pressable>
+          ) : null
+        }     
       />
     </SafeAreaView>
   );
@@ -167,12 +186,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, 
     flexDirection: "row", 
     alignItems: "center", 
-    backgroundColor: "#FAF7F0" 
+    backgroundColor: "#FAF7F0" ,
+    justifyContent: 'flex-start',
   },
-  backRow: { flexDirection: "row", alignItems: "center", width: 60 },
-  backText: { color: "#69324C", fontSize: 14, fontWeight: "700", textTransform: "lowercase" },
+  backRow: { flexDirection: "row", alignItems: "center", width: 60,marginLeft: -8, },
+  backText: { color: "#69324C", fontSize: 14, fontWeight: "700", textTransform: "lowercase", marginLeft: 2, },
 
-  pageTitle: { fontSize: 14, fontWeight: "bold", color: "#1E1E1E",textTransform: 'lowercase', textAlign:"center" },
+  pageTitle: { 
+    fontSize: 14, 
+    
+    color: "#1E1E1E",
+    textTransform: 'lowercase', 
+    textAlign:"left", 
+    marginBottom: 5,
+    marginLeft: 14,
+  },
 
   row: {
     flexDirection: "row",
@@ -190,5 +218,16 @@ const styles = StyleSheet.create({
   message: { color: "#1E1E1E" },
   timeText: { color: "#888", fontSize: 12 }, 
   postThumb: { width: 44, height: 44, borderRadius: 4 },
-  emptyText: { textAlign: 'center', marginTop: 40, color: '#999' }
+  emptyText: { textAlign: 'center', marginTop: 40, color: '#999' },
+
+  footerButton: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  showOlderText: {
+    color: "#69324C",
+    fontSize: 14,
+    fontWeight: "600",
+    textDecorationLine: "underline",
+  }
 });
