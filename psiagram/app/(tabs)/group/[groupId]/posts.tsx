@@ -282,7 +282,7 @@ export default function GroupFeedScreen() {
           <Ionicons name="arrow-back" size={24} color="#1E1E1E" />
         </Pressable>
         <Text style={styles.headerTitle}>
-            {groupName ? `${groupName}` : "Group Feed"}
+            {groupName ? `${groupName}` : "group feed"}
         </Text>
         <Pressable onPress={() => router.push(`/(tabs)/group/${groupId}/info`)} hitSlop={10}>
           <Ionicons name="information-circle-outline" size={24} color="#1E1E1E" />

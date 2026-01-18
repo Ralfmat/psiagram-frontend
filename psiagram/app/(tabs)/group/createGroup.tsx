@@ -7,11 +7,12 @@ import {
   View,
   ActivityIndicator,
   Alert,
+  Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import client from "../../../api/client";
-
+import { Ionicons } from "@expo/vector-icons";
 export default function CreateGroupScreen() {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -20,7 +21,7 @@ export default function CreateGroupScreen() {
 
   const handleCreate = async () => {
     if (!name.trim()) {
-      Alert.alert("Error", "Group name is required.");
+      Alert.alert("error", "group name is required.");
       return;
     }
 
@@ -30,11 +31,11 @@ export default function CreateGroupScreen() {
         name,
         description,
       });
-      Alert.alert("Success", "Group created!");
+      Alert.alert("success", "group created!");
       router.back();
     } catch (e: any) {
-      console.error("Create group error:", e);
-      Alert.alert("Error", "Failed to create group. Name might be taken.");
+      console.error("create group error:", e);
+      Alert.alert("error", "failed to create group. name might be taken.");
     } finally {
       setCreating(false);
     }
@@ -42,9 +43,19 @@ export default function CreateGroupScreen() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.container}>
-        <Text style={styles.title}>Create New Group</Text>
+      <View style={styles.header}>
+        
+        <View style={styles.headerRight}>
+          <Pressable onPress={() => router.back()} hitSlop={10}>
+            <Ionicons name="arrow-back" size={24} color="#1E1E1E" />
+          </Pressable>  
+        </View>
+      <Text style={styles.title}>Create New Group</Text>  
+      </View>
 
+      <View style={styles.container}>
+
+        
         <Text style={styles.label}>Group Name</Text>
         <TextInput
           style={styles.input}
@@ -82,18 +93,13 @@ export default function CreateGroupScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#FAF7F0" },
   container: { padding: 20 },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#1E1E1E",
-    marginBottom: 20,
-    textAlign: "center",
-  },
+  title: { fontSize: 14, fontWeight: "bold", color: "#1E1E1E",textTransform: 'lowercase', textAlign:"center" },
   label: {
     fontSize: 14,
     fontWeight: "bold",
     color: "#5F7751",
     marginBottom: 8,
+    textTransform: 'lowercase',
   },
   input: {
     backgroundColor: "#fff",
@@ -119,5 +125,19 @@ const styles = StyleSheet.create({
     color: "#FAF7F0",
     fontWeight: "bold",
     fontSize: 16,
+    textTransform: 'lowercase',
+  },
+
+  header: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    minHeight: 50,
+  },
+  headerRight:{
+    position:"absolute",
+    left:15
   },
 });

@@ -121,7 +121,7 @@ export default function GroupsScreen() {
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#666" style={{ marginRight: 8 }} />
         <TextInput
-          placeholder="Search groups..."
+          placeholder="search groups..."
           style={styles.searchInput}
           value={searchQuery}
           onChangeText={(text) => {
@@ -149,7 +149,7 @@ export default function GroupsScreen() {
               <ActivityIndicator color="#69324C" />
             ) : (
               <Text style={styles.emptyText}>
-                {searchQuery ? "No groups found." : "You haven't joined any groups yet."}
+                {searchQuery ? "no groups found." : "you haven't joined any groups yet."}
               </Text>
             )}
           </View>

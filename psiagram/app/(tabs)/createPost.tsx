@@ -15,6 +15,7 @@ import {
   TouchableOpacity,
   View,
   Alert,
+  Modal
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -191,7 +192,9 @@ type Mode = "POST" | "EVENT";
 export default function CreateScreen() {
   const [mode, setMode] = useState<Mode>("POST");
   const [loading, setLoading] = useState(false);
-
+  
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  
   // Shared State
   const [myGroups, setMyGroups] = useState<Group[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
@@ -226,7 +229,10 @@ export default function CreateScreen() {
       .then(res => setMyGroups(res.data))
       .catch(err => console.log("Failed to load groups", err));
   }, []);
-
+  const handleSuccessConfirm = () => {
+      setShowSuccessModal(false);
+      router.replace("/(tabs)/feed");
+  };
   // --- Handlers: Post ---
 
   const handlePickImage = async () => {
@@ -268,7 +274,8 @@ export default function CreateScreen() {
         caption: postCaption.trim(),
         groupId: selectedGroupId,
       });
-      
+
+      setShowSuccessModal(true);
       Alert.alert("Success", "Post published!", [
         { text: "OK", onPress: () => router.replace("/(tabs)/feed") }
       ]);
@@ -307,7 +314,8 @@ export default function CreateScreen() {
         end_time: endTime.toISOString(),
         groupId: selectedGroupId,
       });
-      
+
+      setShowSuccessModal(true);
       Alert.alert("Success", "Event created!", [
         { text: "OK", onPress: () => router.replace("/(tabs)/feed") }
       ]);
@@ -484,6 +492,35 @@ export default function CreateScreen() {
 
         </ScrollView>
       </KeyboardAvoidingView>
+<Modal
+        animationType="fade"
+        transparent={true}
+        visible={showSuccessModal}
+        onRequestClose={() => setShowSuccessModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            
+            <Pressable style={styles.closeModalBtn} onPress={handleSuccessConfirm}>
+                <Ionicons name="close" size={20} color="#2F4F2F" />
+            </Pressable>
+           
+            <Text style={styles.successTitle}>
+                your {mode === "EVENT" ? "event" : "post"} has been created
+            </Text>
+            
+            <Image 
+                source={require("@/assets/images/dog.png")}
+                style={styles.successImage}
+                resizeMode="contain"
+            />
+
+            <TouchableOpacity style={styles.yippeeBtn} onPress={handleSuccessConfirm}>
+                <Text style={styles.yippeeText}>yippee!</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>    
     </SafeAreaView>
   );
 }
@@ -596,4 +633,59 @@ const styles = StyleSheet.create({
   },
   disabledBtn: { opacity: 0.7 },
   submitBtnText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContainer: {
+    width: width * 0.8,
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 24,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  closeModalBtn: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    padding: 4,
+  },
+  successTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#0B380C", 
+    textAlign: "center",
+    marginBottom: 20,
+    lineHeight: 22,
+    marginTop: 10,
+  },
+  successImage: {
+    width: 100,
+    height: 100,
+    marginBottom: 20,
+  },
+  yippeeBtn: {
+    backgroundColor: "#69324C",
+    paddingVertical: 10,
+    paddingHorizontal: 32,
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  yippeeText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+  }
+
 });

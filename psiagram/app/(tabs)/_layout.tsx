@@ -99,14 +99,15 @@ export default function TabsLayout() {
       <Tabs.Screen name="feed"/>
       <Tabs.Screen name="search"/>
       <Tabs.Screen name="myProfile"/>
+      <Tabs.Screen name="notifications"/>
     </Tabs>
   );
 }
 
 const styles = StyleSheet.create({
-  headerLeft: { paddingLeft: 10 },
-  logo: { width: 110, height: 110 },
-  headerRight: { paddingRight: 10 },
+  headerLeft: { paddingLeft: 0, justifyContent:"center" },
+  logo: { width: 110, height: 110 ,marginLeft: -8,},
+  headerRight: { paddingRight: 0 },
   // Red Dot Style
   redDot: {
     position: "absolute",
