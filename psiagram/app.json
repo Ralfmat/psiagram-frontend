@@ -20,8 +20,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.psiagram.psiagram",
-      "usesCleartextTraffic": true
+      "package": "com.psiagram.psiagram"
     },
     "web": {
       "output": "static",
@@ -42,12 +41,14 @@
         }
       ],
       "expo-secure-store",
-      "expo-build-properties",
+      [
+        "expo-build-properties",
         {
           "android": {
             "usesCleartextTraffic": true
           }
         }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
